@@ -6,33 +6,85 @@
 //
 
 import XCTest
+import Foundation
 @testable import alp
 
+class MockAuthService: AuthServiceProtocol {
+    var mockUID: String? = "user_123"
+    var mockUser: User? = User(id: "user_123", name: "budi", email: "budi@test.com")
+    var shouldThrowError = false
+    
+    func fetchUserData(uid: String) async throws -> User? {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        return mockUser
+    }
+    func login(email: String, pass: String) async throws -> String {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        return mockUID ?? ""
+    }
+    func register(name: String, email: String, pass: String) async throws -> String {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        return mockUID ?? ""
+    }
+    func logout() throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+    }
+    func getCurrentUID() -> String? {
+        return mockUID
+    }
+}
+
+@MainActor
 final class alpTests: XCTestCase {
+    var mockAuthService: MockAuthService!
+    var vm: AuthViewModel!
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+        try super.setUpWithError()
+        mockAuthService = MockAuthService()
+        vm = AuthViewModel(authService: mockAuthService)
     }
 
     override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        mockAuthService = nil
+        vm = nil
+        try super.tearDownWithError()
     }
-
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
-        // XCTest Documentation
-        // https://developer.apple.com/documentation/xctest
+    
+    func test_checkLoginStatus_UpdatesState() async throws {
+        vm.checkLoginStatus()
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertTrue(vm.isAuthenticated, "User should be authenticated")
     }
-
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
-        }
+    
+    func test_fetchUserData_Success_UpdatesCurrentUser() async throws {
+        vm.fetchUserData(uid: "user_123")
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertEqual(vm.currentUser?.name, "budi", "User name should match the mock data")
+        XCTAssertTrue(vm.errorMessage.isEmpty, "Error message should be empty")
     }
-
+    
+    func test_login_Success_UpdatesState() async throws {
+        vm.login(email: "budi@test.com", pass: "123456")
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertTrue(vm.isAuthenticated, "User should be authenticated after login")
+    }
+    
+    func test_register_Success_UpdatesState() async throws {
+        vm.register(name: "Vness", email: "vness@test.com", pass: "123456")
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertTrue(vm.isAuthenticated, "User should be authenticated after register")
+    }
+    
+    func test_logout_ClearsState() async throws {
+        try await Task.sleep(nanoseconds: 50_000_000)
+        vm.logout()
+        
+        XCTAssertFalse(vm.isAuthenticated, "User should not be authenticated after logout")
+        XCTAssertNil(vm.currentUser, "Current user should be nil after logout")
+    }
 }
