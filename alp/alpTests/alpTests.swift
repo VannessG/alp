@@ -34,8 +34,48 @@ class MockAuthService: AuthServiceProtocol {
     }
 }
 
+class MockEventService: EventServiceProtocol {
+    var shouldThrowError = false
+    var mockEvent = Event(id: "event_abc", name: "MAD Hackathon", joinCode: "ABCDEF", announcement: "Welcome", ownerId: "user_123", status: "active", members: ["user_123"])
+    
+    func observeUserEvents(userId: String, completion: @escaping (Result<[Event], Error>) -> Void) -> () -> Void {
+        if shouldThrowError {
+            completion(.failure(NSError(domain: "Test", code: 400)))
+        } else {
+            completion(.success([mockEvent]))
+        }
+        return {}
+    }
+    
+    func fetchUserEventsCount(userId: String) async throws -> Int {
+        return 1
+    }
+    
+    func createEvent(name: String, ownerId: String) async throws -> Event {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        return mockEvent
+    }
+    
+    func joinEvent(code: String, userId: String) async throws -> Event {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        return mockEvent
+    }
+    
+    func updateAnnouncement(eventId: String, text: String) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+    }
+    
+    func endEvent(eventId: String) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+    }
+    
+    func deleteEvent(eventId: String) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+    }
+}
+
 @MainActor
-final class alpTests: XCTestCase {
+final class AuthViewModelTests: XCTestCase {
     var mockAuthService: MockAuthService!
     var vm: AuthViewModel!
 
@@ -86,5 +126,83 @@ final class alpTests: XCTestCase {
         
         XCTAssertFalse(vm.isAuthenticated, "User should not be authenticated after logout")
         XCTAssertNil(vm.currentUser, "Current user should be nil after logout")
+    }
+}
+
+@MainActor
+final class EventViewModelTests: XCTestCase {
+    var mockEventService: MockEventService!
+    var vm: EventViewModel!
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        mockEventService = MockEventService()
+        vm = EventViewModel(eventService: mockEventService)
+    }
+
+    override func tearDownWithError() throws {
+        mockEventService = nil
+        vm = nil
+        try super.tearDownWithError()
+    }
+    
+    func test_fetchUserEvents_UpdatesCountAndList() async throws {
+        vm.fetchUserEvents(userId: "user_123")
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertEqual(vm.userEventsCount, 1)
+        XCTAssertEqual(vm.userEvents.first?.joinCode, "ABCDEF")
+    }
+    
+    func test_createEvent_Success() {
+        let expectation = XCTestExpectation(description: "Event creation callback triggered")
+        
+        vm.createEvent(name: "iOS Bootcamp", ownerId: "user_123") { success in
+            XCTAssertTrue(success)
+            XCTAssertEqual(self.vm.activeEvent?.name, "MAD Hackathon")
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 2.0)
+    }
+    
+    func test_joinEvent_Success() {
+        let expectation = XCTestExpectation(description: "Join event callback triggered")
+        
+        vm.joinEvent(code: "ABCDEF", userId: "user_456") { success in
+            XCTAssertTrue(success)
+            XCTAssertEqual(self.vm.activeEvent?.joinCode, "ABCDEF")
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 2.0)
+    }
+    
+    func test_updateAnnouncement_Success() async throws {
+        vm.activeEvent = mockEventService.mockEvent
+        vm.updateAnnouncement(text: "Pengumuman Baru")
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertEqual(vm.activeEvent?.announcement, "Pengumuman Baru")
+    }
+    
+    func test_endEvent_Success() async throws {
+        vm.activeEvent = mockEventService.mockEvent
+        vm.endEvent()
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertEqual(vm.activeEvent?.status, "ended")
+    }
+    
+    func test_deleteEvent_Success() {
+        vm.activeEvent = mockEventService.mockEvent
+        let expectation = XCTestExpectation(description: "Delete event callback triggered")
+        
+        vm.deleteEvent {
+            XCTAssertNil(self.vm.activeEvent)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 2.0)
     }
 }
