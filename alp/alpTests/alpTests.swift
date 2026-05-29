@@ -74,6 +74,69 @@ class MockEventService: EventServiceProtocol {
     }
 }
 
+class MockDivisionService: DivisionServiceProtocol {
+    var shouldThrowError = false
+    var mockDivisions: [Division] = [
+        Division(id: "div_abc", eventId: "event_abc", name: "Sponsorship")
+    ]
+    
+    func observeDivisions(for eventId: String, completion: @escaping (Result<[Division], Error>) -> Void) -> () -> Void {
+        if shouldThrowError {
+            completion(.failure(NSError(domain: "Test", code: 400)))
+        } else {
+            completion(.success(mockDivisions))
+        }
+        return {}
+    }
+    
+    func addDivision(name: String, eventId: String) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        mockDivisions.append(Division(id: "div_new", eventId: eventId, name: name))
+    }
+    
+    func updateDivisionName(divisionId: String, newName: String) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        if let index = mockDivisions.firstIndex(where: { $0.id == divisionId }) {
+            mockDivisions[index].name = newName
+        }
+    }
+    
+    func deleteDivision(divisionId: String) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        mockDivisions.removeAll { $0.id == divisionId }
+    }
+}
+
+class MockEventMemberService: EventMemberServiceProtocol {
+    var shouldThrowError = false
+    var mockMember = EventMember(id: "member_abc", eventId: "event_abc", userId: "user_123", role: .member, division: "Unassigned")
+    
+    func observeEventMembers(for eventId: String, completion: @escaping (Result<[EventMember], Error>) -> Void) -> () -> Void {
+        if shouldThrowError {
+            completion(.failure(NSError(domain: "Test", code: 400)))
+        } else {
+            completion(.success([mockMember]))
+        }
+        return {}
+    }
+    
+    func updateMemberRoleAndDivision(memberId: String, newRole: Role, newDivision: String) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+    }
+    
+    func assignMemberToDivision(memberId: String, divisionName: String) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+    }
+    
+    func addActivityPoints(to memberId: String, amount: Int) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+    }
+    
+    func addGlobalUserPoints(to userId: String, amount: Int) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+    }
+}
+
 @MainActor
 final class AuthViewModelTests: XCTestCase {
     var mockAuthService: MockAuthService!
@@ -204,5 +267,155 @@ final class EventViewModelTests: XCTestCase {
         }
         
         wait(for: [expectation], timeout: 2.0)
+    }
+}
+
+@MainActor
+final class DivisionViewModelTests: XCTestCase {
+    var mockDivisionService: MockDivisionService!
+    var vm: DivisionViewModel!
+    
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        mockDivisionService = MockDivisionService()
+        vm = DivisionViewModel(divisionService: mockDivisionService)
+    }
+    
+    override func tearDownWithError() throws {
+        mockDivisionService = nil
+        vm = nil
+        try super.tearDownWithError()
+    }
+    
+    func test_fetchDivisions_Success_UpdatesList() async throws {
+        vm.fetchDivisions(for: "event_abc")
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertEqual(vm.divisions.count, 1)
+        XCTAssertEqual(vm.divisions.first?.name, "Sponsorship")
+        XCTAssertTrue(vm.errorMessage.isEmpty)
+    }
+    
+    func test_getEventDivisions_FiltersDuplicatesAndDefaults() {
+        let activeEvent = Event(id: "event_abc", name: "MAD", joinCode: "ABC", announcement: "", ownerId: "u1", status: "active", members: [])
+        
+        vm.members = [
+            EventMember(id: "m1", eventId: "event_abc", userId: "u1", role: .member, division: "Acara"),
+            EventMember(id: "m2", eventId: "event_abc", userId: "u2", role: .member, division: "Acara"),
+            EventMember(id: "m3", eventId: "event_abc", userId: "u3", role: .member, division: "General"),
+            EventMember(id: "m4", eventId: "event_abc", userId: "u4", role: .member, division: "Unassigned")
+        ]
+        
+        let filteredDivs = vm.getEventDivisions(activeEvent: activeEvent)
+        
+        XCTAssertEqual(filteredDivs.count, 1)
+        XCTAssertEqual(filteredDivs.first, "Acara")
+    }
+    
+    func test_addDivision_Success() async throws {
+        let activeEvent = Event(id: "event_abc", name: "MAD", joinCode: "ABC", announcement: "", ownerId: "u1", status: "active", members: [])
+        vm.divisions = []
+        
+        vm.addDivision(name: "Konsumsi", activeEvent: activeEvent)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertTrue(vm.errorMessage.isEmpty, "Harusnya tidak ada error saat menambah divisi")
+    }
+    
+    func test_updateDivision_Success_UpdatesLocalState() async throws {
+        let activeEvent = Event(id: "event_abc", name: "MAD", joinCode: "ABC", announcement: "", ownerId: "u1", status: "active", members: [])
+        let targetDivisionId = "div_abc"
+            
+        mockDivisionService.mockDivisions = [Division(id: targetDivisionId, eventId: "event_abc", name: "Sponsorship")]
+        vm.members = [EventMember(id: "m1", eventId: "event_abc", userId: "u1", role: .member, division: "Sponsorship")]
+            
+        vm.fetchDivisions(for: "event_abc")
+        try await Task.sleep(nanoseconds: 20_000_000)
+            
+        vm.updateDivision(divisionId: targetDivisionId, newName: "Fundraising", activeEvent: activeEvent)
+        try await Task.sleep(nanoseconds: 50_000_000)
+            
+        vm.fetchDivisions(for: "event_abc")
+        try await Task.sleep(nanoseconds: 20_000_000)
+            
+        XCTAssertEqual(vm.divisions.first?.name, "Fundraising", "Nama divisi di ViewModel harus berubah menjadi Fundraising")
+        XCTAssertEqual(vm.members.first?.division, "Fundraising", "Divisi lama milik member lokal harus ikut sinkron ter-update")
+    }
+        
+    func test_deleteDivision_Success_ResetsMemberDivision() async throws {
+        let activeEvent = Event(id: "event_abc", name: "MAD", joinCode: "ABC", announcement: "", ownerId: "u1", status: "active", members: [])
+        let targetDivisionId = "div_abc"
+            
+        mockDivisionService.mockDivisions = [Division(id: targetDivisionId, eventId: "event_abc", name: "Sponsorship")]
+        vm.members = [EventMember(id: "m1", eventId: "event_abc", userId: "u1", role: .member, division: "Sponsorship")]
+            
+        vm.fetchDivisions(for: "event_abc")
+        try await Task.sleep(nanoseconds: 20_000_000)
+            
+        vm.deleteDivision(divisionId: targetDivisionId, activeEvent: activeEvent)
+        try await Task.sleep(nanoseconds: 50_000_000)
+            
+        vm.fetchDivisions(for: "event_abc")
+        try await Task.sleep(nanoseconds: 20_000_000)
+            
+        XCTAssertTrue(vm.divisions.isEmpty, "Array divisions harusnya kosong setelah dihapus dari database")
+        XCTAssertEqual(vm.members.first?.division, "Unassigned", "Member dengan divisi terhapus harus diubah menjadi Unassigned")
+    }
+}
+
+@MainActor
+final class EventMemberViewModelTests: XCTestCase {
+    var mockEventMemberService: MockEventMemberService!
+    var vm: EventMemberViewModel!
+    
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        mockEventMemberService = MockEventMemberService()
+        vm = EventMemberViewModel(eventMemberService: mockEventMemberService)
+    }
+    
+    override func tearDownWithError() throws {
+        mockEventMemberService = nil
+        vm = nil
+        try super.tearDownWithError()
+    }
+    
+    func test_fetchMembers_Success_UpdatesCurrentUserState() async throws {
+        vm.fetchMembers(for: "event_abc", currentUserId: "user_123")
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertEqual(vm.members.count, 1)
+        XCTAssertEqual(vm.currentUserRole, .member)
+        XCTAssertEqual(vm.currentUserDivision, "Unassigned")
+        XCTAssertTrue(vm.errorMessage.isEmpty)
+    }
+    
+    func test_updateMember_Success() async throws {
+        vm.updateMember(memberId: "member_abc", newRole: .coordinator, newDivision: "Core", currentUserId: "user_123", eventId: "event_abc")
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertTrue(vm.errorMessage.isEmpty)
+    }
+    
+    func test_assignMemberToMyDivision_Success() async throws {
+        vm.currentUserDivision = "Logistik"
+        
+        vm.assignMemberToMyDivision(memberId: "member_abc", currentUserId: "user_123", eventId: "event_abc")
+        try await Task.sleep(nanoseconds: 50_000_000)
+        
+        XCTAssertTrue(vm.errorMessage.isEmpty)
+    }
+    
+    func test_deleteEvent_ClearsLocalMembersAndActiveEvent() {
+        var activeEvent: Event? = Event(id: "event_abc", name: "MAD", joinCode: "ABC", announcement: "", ownerId: "u1", status: "active", members: [])
+        vm.members = [
+            EventMember(id: "m1", eventId: "event_abc", userId: "u1", role: .member, division: "Core"),
+            EventMember(id: "m2", eventId: "event_xyz", userId: "u1", role: .member, division: "Core")
+        ]
+        
+        vm.deleteEvent(eventId: "event_abc", activeEvent: &activeEvent)
+        
+        XCTAssertEqual(vm.members.count, 1, "Hanya member dari event_abc yang harus dihapus")
+        XCTAssertNil(activeEvent, "Active event harus dinull-kan jika id-nya cocok")
     }
 }
