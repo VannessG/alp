@@ -1,13 +1,19 @@
+//
+//  MockChatService.swift
+//  alp
+//
+//  Created by Vincent on 28/05/26.
+//
+
+
 import XCTest
 import FirebaseFirestore
-@testable import NamaAplikasiAnda // Sesuaikan dengan target Anda
+@testable import alp
 
-// Mock Service
 class MockChatService: ChatServiceProtocol {
     var mockMessages: [ChatMessage] = []
     var shouldThrowError = false
     
-    // Menyimpan closure dari listener untuk kita panggil secara manual saat testing
     var capturedCompletion: ((Result<[ChatMessage], Error>) -> Void)?
     
     func sendMessage(_ message: ChatMessage) async throws {
@@ -16,7 +22,6 @@ class MockChatService: ChatServiceProtocol {
         msg.id = UUID().uuidString
         mockMessages.append(msg)
         
-        // Simulasikan behavior Firebase: saat data bertambah, listener otomatis terpanggil
         capturedCompletion?(.success(mockMessages))
     }
     
@@ -29,7 +34,7 @@ class MockChatService: ChatServiceProtocol {
             let filtered = mockMessages.filter { $0.roomId == roomId }
             completion(.success(filtered))
         }
-        return nil // Mock tidak butuh object ListenerRegistration asli
+        return nil
     }
 }
 
@@ -56,7 +61,6 @@ final class ChatViewModelTests: XCTestCase {
         
         viewModel.startListening(roomId: "room_A")
         
-        // Kita gunakan sedikit delay karena DispatchQueue.main.async di dalam ViewModel
         let expectation = XCTestExpectation(description: "Tunggu listener update array")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             XCTAssertEqual(self.viewModel.messages.count, 1)
@@ -66,15 +70,14 @@ final class ChatViewModelTests: XCTestCase {
         wait(for: [expectation], timeout: 1.0)
     }
     
-    func testSendMessageTriggersListener() async {
-        // Mulai mendengarkan ruangan tertentu
-        viewModel.startListening(roomId: "room_A")
-        
-        // Kirim pesan baru
-        await viewModel.sendMessage(roomId: "room_A", senderId: "usr2", senderName: "Andi", text: "Saya sudah di lokasi")
-        
-        // Array pesan harus otomatis ter-update oleh listener
-        XCTAssertEqual(viewModel.messages.count, 1)
-        XCTAssertEqual(viewModel.messages.first?.text, "Saya sudah di lokasi")
-    }
+    func testSendMessageTriggersListener() async throws {
+            viewModel.startListening(roomId: "room_A")
+            
+            await viewModel.sendMessage(roomId: "room_A", senderId: "usr2", senderName: "Andi", text: "Saya sudah di lokasi")
+
+            try await Task.sleep(nanoseconds: 100_000_000)
+            
+            XCTAssertEqual(viewModel.messages.count, 1)
+            XCTAssertEqual(viewModel.messages.first?.text, "Saya sudah di lokasi")
+        }
 }

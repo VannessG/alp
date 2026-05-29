@@ -1,15 +1,23 @@
+//
+//  ChatMessage.swift
+//  alp
+//
+//  Created by Vincent on 28/05/26.
+//
+
+
 import Foundation
 import FirebaseFirestore
 
 struct ChatMessage: Identifiable, Codable, Equatable {
     @DocumentID var id: String?
-    var roomId: String      // ID event atau ID divisi
-    var senderId: String    // ID pengirim
-    var senderName: String  // Nama pengirim untuk ditampilkan
+    var roomId: String
+    var senderId: String
+    var senderName: String
     var text: String
     var timestamp: Date
     
-    // Implementasi Equatable untuk mempermudah Unit Testing
+    // Untuk Unit Testing
     static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
         return lhs.id == rhs.id && 
                lhs.roomId == rhs.roomId && 
