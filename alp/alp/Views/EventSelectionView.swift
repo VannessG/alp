@@ -22,15 +22,10 @@ struct EventSelectionView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background layar
                 Color(UIColor.systemGroupedBackground).ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
-                        
-                        // ==========================================
-                        // 1. WELCOME HERO SECTION
-                        // ==========================================
                         ZStack {
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -78,13 +73,8 @@ struct EventSelectionView: View {
                         .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
                         .frame(height: 110)
                         
-                        
-                        // ==========================================
-                        // 2. EVENT LIST SECTION
-                        // ==========================================
                         VStack(spacing: 12) {
                             HStack {
-                                // Section Header Inline
                                 HStack(spacing: 7) {
                                     RoundedRectangle(cornerRadius: 2)
                                         .fill(Color.blue)
@@ -101,7 +91,6 @@ struct EventSelectionView: View {
                             }
                             
                             if eventVM.userEvents.isEmpty {
-                                // Empty State
                                 VStack(spacing: 16) {
                                     ZStack {
                                         Circle()
@@ -126,7 +115,6 @@ struct EventSelectionView: View {
                                 .background(Color(UIColor.secondarySystemGroupedBackground))
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             } else {
-                                // Event List
                                 VStack(spacing: 12) {
                                     ForEach(eventVM.userEvents) { event in
                                         Button(action: {
@@ -167,12 +155,7 @@ struct EventSelectionView: View {
                             }
                         }
                         
-                        
-                        // ==========================================
-                        // 3. ACTION SECTION
-                        // ==========================================
                         VStack(spacing: 10) {
-                            // Section Header Inline
                             HStack(spacing: 7) {
                                 RoundedRectangle(cornerRadius: 2)
                                     .fill(Color.blue)
@@ -188,7 +171,6 @@ struct EventSelectionView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             
-                            // Button Create Event
                             Button(action: { showCreate = true }) {
                                 HStack(spacing: 12) {
                                     ZStack {
@@ -218,7 +200,6 @@ struct EventSelectionView: View {
                                 .shadow(color: .blue.opacity(0.3), radius: 8, y: 4)
                             }
                             
-                            // Button Join Event
                             Button(action: { showJoin = true }) {
                                 HStack(spacing: 12) {
                                     ZStack {
@@ -251,19 +232,10 @@ struct EventSelectionView: View {
                         
                     }
                     .padding(.horizontal, 16)
-                    
-                    // Padding dasar
                     .padding(.vertical, 24)
-                    
-                    // Batasi lebar
                     .frame(maxWidth: 650)
-                    
-                    // Scale effect untuk iPad
                     .scaleEffect(sizeClass == .regular ? 1.55 : 1.0, anchor: .top)
-                    
                     .frame(maxWidth: .infinity, alignment: .center)
-                    
-                    // Padding ekstra untuk scroll iPad
                     .padding(.bottom, sizeClass == .regular ? 350 : 0)
                 }
             }
@@ -286,7 +258,6 @@ struct EventSelectionView: View {
                     eventVM.fetchUserEvents(userId: userId)
                 }
             }
-            // Alert Create Event
             .alert("Buat Event", isPresented: $showCreate) {
                 TextField("Nama Event", text: $newEventName)
                 Button("Batal", role: .cancel) { }
@@ -298,7 +269,6 @@ struct EventSelectionView: View {
                     }
                 }
             }
-            // Alert Join Event
             .alert("Join Event", isPresented: $showJoin) {
                 TextField("Kode Join", text: $joinCode)
                 Button("Batal", role: .cancel) { }
@@ -308,7 +278,6 @@ struct EventSelectionView: View {
                     }
                 }
             }
-            // Alert Logout Warning
             .alert("Konfirmasi Logout", isPresented: $showLogoutWarning) {
                 Button("Batal", role: .cancel) { }
                 Button("Logout", role: .destructive) {
@@ -322,14 +291,11 @@ struct EventSelectionView: View {
     }
 }
 
-
-// MARK: - Preview Langsung Tanpa Struct Tambahan
 #Preview {
     let mockAuth = AuthViewModel()
     mockAuth.currentUser = User(id: "123", name: "Vanness", email: "test@test.com")
     
     let mockEvent = EventViewModel()
-    // Data tiruan untuk mengetes list
     mockEvent.userEvents = [
         Event(id: "1", name: "Kepanitiaan SIFT", joinCode: "SF123", announcement: "", ownerId: "123", status: "active", members: []),
         Event(id: "2", name: "PRISM 2026", joinCode: "PR999", announcement: "", ownerId: "456", status: "active", members: [])
