@@ -15,11 +15,10 @@ struct DashboardView: View {
     
     @State private var showAnnouncementInput = false
     @State private var announcementText = ""
-    @State private var showLogoutWarning = false // State untuk peringatan logout
+    @State private var showLogoutWarning = false
     
     var body: some View {
         ZStack {
-            // Background warna abu-abu khas sistem Apple
             Color(UIColor.systemGroupedBackground).ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
@@ -28,10 +27,6 @@ struct DashboardView: View {
                     let role = (event.ownerId == authVM.currentUser?.id) ? "Owner" : "Member"
                     
                     VStack(spacing: 24) {
-                        
-                        // ==========================================
-                        // 1. HERO CARD SECTION
-                        // ==========================================
                         ZStack {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
                                 .fill(LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -65,7 +60,6 @@ struct DashboardView: View {
                                 
                                 Spacer(minLength: 20)
                                 
-                                // Area bawah Hero Card (Join Code)
                                 HStack {
                                     HStack(spacing: 6) {
                                         Image(systemName: "key.fill")
@@ -102,13 +96,8 @@ struct DashboardView: View {
                         
                         
                         VStack(spacing: 20) {
-                            
-                            // ==========================================
-                            // 2. ANNOUNCEMENT SECTION
-                            // ==========================================
                             VStack(spacing: 12) {
                                 HStack {
-                                    // Section Header Inline
                                     HStack(spacing: 6) {
                                         RoundedRectangle(cornerRadius: 2).fill(Color.orange).frame(width: 3, height: 16)
                                         Image(systemName: "megaphone.fill").font(.system(size: 12, weight: .semibold)).foregroundColor(.orange)
@@ -131,7 +120,6 @@ struct DashboardView: View {
                                     }
                                 }
                                 
-                                // Card Content Inline
                                 HStack(alignment: .top, spacing: 12) {
                                     ZStack {
                                         Circle().fill(Color.orange.opacity(0.15)).frame(width: 36, height: 36)
@@ -160,11 +148,7 @@ struct DashboardView: View {
                                 .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
                             }
                             
-                            // ==========================================
-                            // 3. QUICK ACTIONS SECTION
-                            // ==========================================
                             VStack(spacing: 12) {
-                                // Section Header Inline
                                 HStack(spacing: 6) {
                                     RoundedRectangle(cornerRadius: 2).fill(Color.blue).frame(width: 3, height: 16)
                                     Image(systemName: "square.grid.2x2.fill").font(.system(size: 12, weight: .semibold)).foregroundColor(.blue)
@@ -172,29 +156,25 @@ struct DashboardView: View {
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 
-                                // Hapus ScrollView, pakai HStack biasa
-                                HStack(spacing: 12) { // Spacing antar tombol
-                                    
-                                    // Button 1: Divisions
+                                HStack(spacing: 12) {
                                     Button(action: {}) {
-                                        VStack(spacing: 10) { // Spacing vertikal diperbesar sedikit
+                                        VStack(spacing: 10) {
                                             ZStack {
-                                                Circle().fill(Color.blue.opacity(0.15)).frame(width: 54, height: 54) // Lingkaran diperbesar
+                                                Circle().fill(Color.blue.opacity(0.15)).frame(width: 54, height: 54)
                                                 Image(systemName: "person.3.fill").font(.system(size: 22, weight: .semibold)).foregroundColor(.blue)
                                             }
                                             Text("Divisions")
-                                                .font(.system(size: 13, weight: .semibold)) // Font sedikit diperbesar
+                                                .font(.system(size: 13, weight: .semibold))
                                                 .foregroundColor(.primary)
                                         }
-                                        .padding(.vertical, 16) // Padding atas-bawah diperbesar
-                                        .frame(maxWidth: .infinity) // KUNCI: Membiarkan tombol meluas selebar mungkin
+                                        .padding(.vertical, 16)
+                                        .frame(maxWidth: .infinity)
                                         .background(Color(UIColor.secondarySystemGroupedBackground))
                                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                                         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.gray.opacity(0.15), lineWidth: 1))
                                         .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
                                     }.buttonStyle(PlainButtonStyle())
                                     
-                                    // Button 2: Members
                                     Button(action: {}) {
                                         VStack(spacing: 10) {
                                             ZStack {
@@ -206,14 +186,13 @@ struct DashboardView: View {
                                                 .foregroundColor(.primary)
                                         }
                                         .padding(.vertical, 16)
-                                        .frame(maxWidth: .infinity) // KUNCI
+                                        .frame(maxWidth: .infinity)
                                         .background(Color(UIColor.secondarySystemGroupedBackground))
                                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                                         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.gray.opacity(0.15), lineWidth: 1))
                                         .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
                                     }.buttonStyle(PlainButtonStyle())
                                     
-                                    // Button 3: Presence
                                     Button(action: {}) {
                                         VStack(spacing: 10) {
                                             ZStack {
@@ -225,7 +204,7 @@ struct DashboardView: View {
                                                 .foregroundColor(.primary)
                                         }
                                         .padding(.vertical, 16)
-                                        .frame(maxWidth: .infinity) // KUNCI
+                                        .frame(maxWidth: .infinity)
                                         .background(Color(UIColor.secondarySystemGroupedBackground))
                                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                                         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.gray.opacity(0.15), lineWidth: 1))
@@ -234,11 +213,8 @@ struct DashboardView: View {
                                     
                                 }
                             }
-                            // ==========================================
-                            // 4. UPCOMING SCHEDULE SECTION
-                            // ==========================================
+                            
                             VStack(spacing: 12) {
-                                // Section Header Inline
                                 HStack(spacing: 6) {
                                     RoundedRectangle(cornerRadius: 2).fill(Color.blue).frame(width: 3, height: 16)
                                     Image(systemName: "calendar").font(.system(size: 12, weight: .semibold)).foregroundColor(.blue)
@@ -246,7 +222,6 @@ struct DashboardView: View {
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 
-                                // Card Content Inline
                                 HStack(spacing: 12) {
                                     Image(systemName: "calendar.badge.clock")
                                         .font(.system(size: 24))
@@ -269,9 +244,6 @@ struct DashboardView: View {
                                 .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
                             }
                             
-                            // ==========================================
-                            // 5. DANGER ZONE SECTION
-                            // ==========================================
                             VStack(spacing: 12) {
                                 HStack {
                                     Rectangle().fill(Color.gray.opacity(0.3)).frame(height: 1)
@@ -286,7 +258,6 @@ struct DashboardView: View {
                                 .padding(.bottom, 8)
                                 
                                 if !isReadOnly {
-                                    // End Event Button Inline
                                     Button(action: { eventVM.endEvent() }) {
                                         HStack(spacing: 14) {
                                             ZStack {
@@ -313,7 +284,6 @@ struct DashboardView: View {
                                         .padding(.vertical, 8)
                                 }
                                 
-                                // Delete Event Button Inline
                                 Button(action: {
                                     eventVM.deleteEvent {
                                         dismiss()
@@ -342,19 +312,10 @@ struct DashboardView: View {
                         }
                         .padding(.horizontal, 16)
                     }
-                    // Padding dasar (tanpa syarat iPad)
                     .padding(.vertical, 24)
-                    
-                    // Batasi lebar aslinya seukuran iPhone
                     .frame(maxWidth: 650)
-                    
-                    // KUNCI SOLUSI: Menggunakan anchor: .top agar pembesaran HANYA ke arah bawah,
-                    // menjaga batas atas tetap terjangkar dan tidak terpotong (clipped).
                     .scaleEffect(sizeClass == .regular ? 1.55 : 1.0, anchor: .top)
-                    
                     .frame(maxWidth: .infinity, alignment: .center)
-                    
-                    // Memberi ruang ekstra di akhir ScrollView pada iPad agar ujung bawah tidak terpotong
                     .padding(.bottom, sizeClass == .regular ? 450 : 0)
                 }
             }
@@ -362,17 +323,15 @@ struct DashboardView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
-            // Tombol Back ke Lobi
             ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: { dismiss() }) {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left").font(.system(size: 14, weight: .bold))
-                        Text("Lobi").font(.system(size: 15, weight: .semibold))
+                        Text("Back to Lobby").font(.system(size: 15, weight: .semibold))
                     }
                     .foregroundColor(.blue)
                 }
             }
-            // Tombol Logout beserta Peringatannya
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { showLogoutWarning = true }) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
@@ -381,7 +340,6 @@ struct DashboardView: View {
                 }
             }
         }
-        // Popup Pengumuman
         .alert("Pengumuman", isPresented: $showAnnouncementInput) {
             TextField("Isi pengumuman", text: $announcementText)
             Button("Batal", role: .cancel) { }
@@ -389,7 +347,6 @@ struct DashboardView: View {
                 eventVM.updateAnnouncement(text: announcementText)
             }
         }
-        // Popup Warning Logout
         .alert("Konfirmasi Logout", isPresented: $showLogoutWarning) {
             Button("Batal", role: .cancel) { }
             Button("Logout", role: .destructive) {
