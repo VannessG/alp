@@ -12,142 +12,128 @@ struct DashboardView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject var memberVM: EventMemberViewModel
     @EnvironmentObject var divisionVM: DivisionViewModel
-    @Environment(\.dismiss) var dismiss
     @Environment(\.horizontalSizeClass) var sizeClass
 
     @State private var showAnnouncementInput = false
     @State private var announcementText = ""
-    @State private var showLogoutWarning = false
 
     var body: some View {
-        ZStack {
-            Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                if let event = eventVM.activeEvent {
-                    let isReadOnly = (event.status == "ended")
-                    let role = (event.ownerId == authVM.currentUser?.id) ? "Owner" : "Member"
+                ScrollView(showsIndicators: false) {
+                    if let event = eventVM.activeEvent {
+                        let isReadOnly = (event.status == "ended")
+                        let role = (event.ownerId == authVM.currentUser?.id) ? "Owner" : "Member"
 
-                    VStack(spacing: 24) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .fill(LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        VStack(spacing: 24) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    .fill(LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
 
-                            VStack(spacing: 0) {
-                                HStack(alignment: .top) {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text("ACTIVE COMMITTEE")
-                                            .font(.system(size: 11, weight: .semibold))
-                                            .foregroundColor(.white.opacity(0.7))
-                                            .tracking(0.8)
+                                VStack(spacing: 0) {
+                                    HStack(alignment: .top) {
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            Text("ACTIVE COMMITTEE")
+                                                .font(.system(size: 11, weight: .semibold))
+                                                .foregroundColor(.white.opacity(0.7))
+                                                .tracking(0.8)
 
-                                        Text(event.name)
-                                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                                            .foregroundColor(.white)
-                                            .lineLimit(2)
+                                            Text(event.name)
+                                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                                .foregroundColor(.white)
+                                                .lineLimit(2)
 
-                                        Text(role.uppercased())
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(.blue)
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 4)
-                                            .background(Color.white)
-                                            .clipShape(Capsule())
-                                            .padding(.top, 4)
+                                            Text(role.uppercased())
+                                                .font(.system(size: 10, weight: .bold))
+                                                .foregroundColor(.blue)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 4)
+                                                .background(Color.white)
+                                                .clipShape(Capsule())
+                                                .padding(.top, 4)
+                                        }
+                                        Spacer()
                                     }
-                                    Spacer()
+                                    .padding(.horizontal, 20)
+                                    .padding(.top, 22)
+
+                                    Spacer(minLength: 20)
+
+                                    HStack {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "key.fill")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.white)
+                                            Text(event.joinCode)
+                                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                                .foregroundColor(.white)
+                                        }
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 8)
+                                        .background(Color.white.opacity(0.2))
+                                        .clipShape(Capsule())
+
+                                        Spacer()
+
+                                        if event.status == "ended" {
+                                            Text("ENDED")
+                                                .font(.system(size: 10, weight: .bold))
+                                                .foregroundColor(.red)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 4)
+                                                .background(Color.red.opacity(0.2))
+                                                .clipShape(Capsule())
+                                        }
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.bottom, 20)
                                 }
-                                .padding(.horizontal, 20)
-                                .padding(.top, 22)
-
-                                Spacer(minLength: 20)
-
-                                HStack {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "key.fill")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(.white)
-                                        Text(event.joinCode)
-                                            .font(.system(size: 14, weight: .bold, design: .monospaced))
-                                            .foregroundColor(.white)
-                                    }
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 8)
-                                    .background(Color.white.opacity(0.2))
-                                    .clipShape(Capsule())
-
-                                    Spacer()
-
-                                    if event.status == "ended" {
-                                        Text("ENDED")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(.red)
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 4)
-                                            .background(Color.red.opacity(0.2))
-                                            .clipShape(Capsule())
-                                    }
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 20)
                             }
-                        }
-                        .frame(height: 160)
-                        .padding(.horizontal, 16)
-                        .shadow(color: .blue.opacity(0.3), radius: 15, x: 0, y: 8)
+                            .frame(height: 160)
+                            .padding(.horizontal, 16)
+                            .shadow(color: .blue.opacity(0.3), radius: 15, x: 0, y: 8)
 
-                        VStack(spacing: 20) {
-                            announcementSection(event: event, isReadOnly: isReadOnly)
-                            operationalMenuSection(event: event)
-                            upcomingScheduleSection
-                            dangerZoneSection(isReadOnly: isReadOnly)
+                            VStack(spacing: 20) {
+                                announcementSection(event: event, isReadOnly: isReadOnly)
+                                operationalMenuSection(event: event)
+                                upcomingScheduleSection
+                                dangerZoneSection(isReadOnly: isReadOnly)
+                            }
+                            .padding(.horizontal, 16)
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.vertical, 24)
+                        .frame(maxWidth: 650)
+                        .scaleEffect(sizeClass == .regular ? 1.55 : 1.0, anchor: .top)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.bottom, sizeClass == .regular ? 450 : 0)
                     }
-                    .padding(.vertical, 24)
-                    .frame(maxWidth: 650)
-                    .scaleEffect(sizeClass == .regular ? 1.55 : 1.0, anchor: .top)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.bottom, sizeClass == .regular ? 450 : 0)
                 }
             }
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: { dismiss() }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left").font(.system(size: 14, weight: .bold))
-                        Text("Back to Lobby").font(.system(size: 15, weight: .semibold))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        eventVM.activeEvent = nil
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left").font(.system(size: 14, weight: .bold))
+                            Text("Back to Lobby").font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundColor(.blue)
                     }
-                    .foregroundColor(.blue)
                 }
             }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showLogoutWarning = true }) {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.red)
+            .alert("Pengumuman", isPresented: $showAnnouncementInput) {
+                TextField("Isi pengumuman", text: $announcementText)
+                Button("Batal", role: .cancel) { }
+                Button("Simpan") {
+                    eventVM.updateAnnouncement(text: announcementText)
                 }
             }
+            .preferredColorScheme(.light)
         }
-        .alert("Pengumuman", isPresented: $showAnnouncementInput) {
-            TextField("Isi pengumuman", text: $announcementText)
-            Button("Batal", role: .cancel) { }
-            Button("Simpan") {
-                eventVM.updateAnnouncement(text: announcementText)
-            }
-        }
-        .alert("Konfirmasi Logout", isPresented: $showLogoutWarning) {
-            Button("Batal", role: .cancel) { }
-            Button("Logout", role: .destructive) {
-                authVM.logout()
-            }
-        } message: {
-            Text("Apakah Anda yakin ingin keluar dari akun ini?")
-        }
-        .preferredColorScheme(.light)
     }
 
     private func announcementSection(event: Event, isReadOnly: Bool) -> some View {
@@ -317,7 +303,7 @@ struct DashboardView: View {
 
             Button(action: {
                 eventVM.deleteEvent {
-                    dismiss()
+                    eventVM.activeEvent = nil
                 }
             }) {
                 HStack(spacing: 14) {
@@ -375,11 +361,9 @@ struct DashboardView: View {
         members: ["123"]
     )
 
-    return NavigationStack {
-        DashboardView()
-            .environmentObject(mockAuth)
-            .environmentObject(mockEvent)
-            .environmentObject(EventMemberViewModel())
-            .environmentObject(DivisionViewModel())
-    }
+    return DashboardView()
+        .environmentObject(mockAuth)
+        .environmentObject(mockEvent)
+        .environmentObject(EventMemberViewModel())
+        .environmentObject(DivisionViewModel())
 }

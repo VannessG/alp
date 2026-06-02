@@ -26,16 +26,11 @@ struct alpApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if authVM.isAuthenticated {
-                EventSelectionView()
-                    .environmentObject(authVM)
-                    .environmentObject(eventVM)
-                    .environmentObject(memberVM)
-                    .environmentObject(divisionVM)
-            } else {
-                LoginView()
-                    .environmentObject(authVM)
-            }
+            ContentView()
+                .environmentObject(authVM)
+                .environmentObject(eventVM)
+                .environmentObject(memberVM)
+                .environmentObject(divisionVM)
         }
     }
 }

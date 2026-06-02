@@ -11,8 +11,6 @@ struct EventSelectionView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject var eventVM: EventViewModel
     @Environment(\.horizontalSizeClass) var sizeClass
-
-    @State private var isDashboardActive = false
     @State private var showCreate = false
     @State private var newEventName = ""
     @State private var showJoin = false
@@ -88,7 +86,9 @@ struct EventSelectionView: View {
                                         .textCase(.uppercase)
                                         .tracking(0.6)
                                 }
+                                Spacer()
                             }
+                            
                             
                             if eventVM.userEvents.isEmpty {
                                 VStack(spacing: 16) {
@@ -119,7 +119,6 @@ struct EventSelectionView: View {
                                     ForEach(eventVM.userEvents) { event in
                                         Button(action: {
                                             eventVM.activeEvent = event
-                                            isDashboardActive = true
                                         }) {
                                             HStack(spacing: 14) {
                                                 ZStack {
@@ -239,7 +238,7 @@ struct EventSelectionView: View {
                     .padding(.bottom, sizeClass == .regular ? 350 : 0)
                 }
             }
-            .navigationTitle("Event Dashboard")
+            .navigationTitle("Event Lobby")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -249,9 +248,6 @@ struct EventSelectionView: View {
                             .foregroundColor(.red)
                     }
                 }
-            }
-            .navigationDestination(isPresented: $isDashboardActive) {
-                DashboardView()
             }
             .onAppear {
                 if let userId = authVM.currentUser?.id {
@@ -263,8 +259,8 @@ struct EventSelectionView: View {
                 Button("Batal", role: .cancel) { }
                 Button("Buat") {
                     eventVM.createEvent(name: newEventName, ownerId: authVM.currentUser?.id ?? "") { success in
-                        if success {
-                            isDashboardActive = true
+                        if success, let userId = authVM.currentUser?.id {
+                            eventVM.fetchUserEvents(userId: userId)
                         }
                     }
                 }
@@ -274,7 +270,9 @@ struct EventSelectionView: View {
                 Button("Batal", role: .cancel) { }
                 Button("Join") {
                     eventVM.joinEvent(code: joinCode, userId: authVM.currentUser?.id ?? "") { success in
-                        if success { isDashboardActive = true }
+                        if success, let userId = authVM.currentUser?.id {
+                            eventVM.fetchUserEvents(userId: userId)
+                        }
                     }
                 }
             }

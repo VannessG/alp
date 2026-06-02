@@ -8,17 +8,24 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject var authVM: AuthViewModel
+    @EnvironmentObject var eventVM: EventViewModel
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Group {
+            if authVM.currentUser == nil {
+                LoginView()
+            } else if eventVM.activeEvent == nil {
+                EventSelectionView()
+            } else {
+                MainTabView()
+            }
         }
-        .padding()
+        .preferredColorScheme(.light)
     }
 }
 
 #Preview {
     ContentView()
+        .environmentObject(AuthViewModel())
 }
