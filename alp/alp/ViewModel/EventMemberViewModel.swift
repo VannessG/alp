@@ -15,46 +15,77 @@ class EventMemberViewModel: ObservableObject {
     @Published var currentUserRole: Role = .member
     @Published var currentUserDivision: String = "Unassigned"
     @Published var errorMessage = ""
-
+    
     private let eventMemberService: EventMemberServiceProtocol
     private let authService: AuthServiceProtocol
     private var cancelMembersListener: (() -> Void)?
-
+    
     init(eventMemberService: EventMemberServiceProtocol? = nil, authService: AuthServiceProtocol? = nil) {
         self.eventMemberService = eventMemberService ?? EventMemberService.shared
         self.authService = authService ?? AuthService.shared
     }
-
+    
     func fetchMembers(for eventId: String, currentUserId: String?) {
         cancelMembersListener?()
-
+        
         cancelMembersListener = eventMemberService.observeEventMembers(for: eventId) { [weak self] result in
             guard let self = self else { return }
             Task { @MainActor in
                 switch result {
                 case .success(let members):
                     self.members = members
+                    
                     if let currentUserId = currentUserId,
-                       let currentMember = members.first(where: { $0.userId == currentUserId }) {
+                       let currentMember = self.members.first(where: { $0.userId == currentUserId }) {
                         self.currentUserRole = currentMember.role
                         self.currentUserDivision = currentMember.division
                     }
                     self.errorMessage = ""
-                    await self.fetchUsers(for: members)
+                    
+                    let userIds = members.map { $0.userId }
+                    self.fetchUsers(byIds: userIds)
                 case .failure(let error):
                     self.errorMessage = error.localizedDescription
                 }
             }
         }
     }
+    
+    func updateMember(memberId: String, newRole: Role, newDivision: String, currentUserId: String?, eventId: String) {
+        Task {
+            do {
+                try await self.eventMemberService.updateMemberRoleAndDivision(memberId: memberId, newRole: newRole, newDivision: newDivision)
+            } catch {
+                self.errorMessage = error.localizedDescription
+            }
+        }
+    }
+    
+    func assignMemberToMyDivision(memberId: String, currentUserId: String?, eventId: String) {
+        Task {
+            do {
+                try await self.eventMemberService.assignMemberToDivision(memberId: memberId, divisionName: currentUserDivision)
+            } catch {
+                self.errorMessage = error.localizedDescription
+            }
+        }
+    }
+    
+    func deleteEvent(eventId: String, activeEvent: inout Event?) {
+        members.removeAll { $0.eventId == eventId }
+        if activeEvent?.id == eventId {
+            activeEvent = nil
+        }
+    }
 
-    private func fetchUsers(for members: [EventMember]) async {
-        let ids = members.map { $0.userId }
-        do {
-            let users = try await authService.fetchUsers(byIds: ids)
-            self.registeredUsers = users
-        } catch {
-            self.errorMessage = error.localizedDescription
+    func fetchUsers(byIds ids: [String]) {
+        Task {
+            do {
+                let users = try await authService.fetchUsers(byIds: ids)
+                self.registeredUsers = users
+            } catch {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -62,36 +93,26 @@ class EventMemberViewModel: ObservableObject {
         registeredUsers.first { $0.id == userId }
     }
 
-    func updateMember(memberId: String, newRole: Role, newDivision: String) {
-        Task {
-            do {
-                try await eventMemberService.updateMemberRoleAndDivision(memberId: memberId, newRole: newRole, newDivision: newDivision)
-            } catch {
-                self.errorMessage = error.localizedDescription
-            }
-        }
-    }
-
-    func getEventMembers(activeEvent: Event?) -> [EventMember] {
-        guard let event = activeEvent else { return [] }
-        return members.filter { $0.eventId == event.id }
-    }
-
-    func getEligibleAssignees(activeEvent: Event?, registeredUsers: [User]) -> [User] {
+    func getEligibleAssignees(activeEvent: Event?) -> [User] {
         let eventMembers = getEventMembers(activeEvent: activeEvent)
         var eligibleMembers: [EventMember] = []
-
+        
         if currentUserRole == .owner {
             eligibleMembers = eventMembers.filter { $0.role == .coordinator }
         } else if currentUserRole == .coordinator {
             eligibleMembers = eventMembers.filter { $0.role == .member && $0.division == currentUserDivision }
         }
-
+        
         return eligibleMembers.compactMap { member in
-            registeredUsers.first { $0.id == member.userId }
+            registeredUsers.first(where: { $0.id == member.userId })
         }
     }
-
+    
+    func getEventMembers(activeEvent: Event?) -> [EventMember] {
+        guard let event = activeEvent else { return [] }
+        return members.filter { $0.eventId == event.id }
+    }
+    
     deinit {
         cancelMembersListener?()
     }

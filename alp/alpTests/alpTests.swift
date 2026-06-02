@@ -12,11 +12,18 @@ import Foundation
 class MockAuthService: AuthServiceProtocol {
     var mockUID: String? = "user_123"
     var mockUser: User? = User(id: "user_123", name: "budi", email: "budi@test.com")
+    var mockUsers: [User] = []
     var shouldThrowError = false
     
     func fetchUserData(uid: String) async throws -> User? {
         if shouldThrowError { throw NSError(domain: "Test", code: 400) }
         return mockUser
+    }
+    func fetchUsers(byIds ids: [String]) async throws -> [User] {
+            if shouldThrowError {
+                throw NSError(domain: "Test", code: 400)
+            }
+            return mockUsers.filter { ids.contains($0.id ?? "") }
     }
     func login(email: String, pass: String) async throws -> String {
         if shouldThrowError { throw NSError(domain: "Test", code: 400) }
@@ -134,6 +141,61 @@ class MockEventMemberService: EventMemberServiceProtocol {
     
     func addGlobalUserPoints(to userId: String, amount: Int) async throws {
         if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+    }
+}
+
+class MockAttendanceService: AttendanceServiceProtocol {
+    var shouldThrowError = false
+ 
+    var mockRecords: [AttendanceRecord] = [
+        AttendanceRecord(
+            id: "rec_abc",
+            eventId: "event_abc",
+            scheduleId: nil,
+            name: "Rapat Pembukaan",
+            date: Date(timeIntervalSince1970: 1_000_000),
+            attendedMemberIds: ["user_123"],
+            targetMemberIds: ["user_123", "user_456"],
+            attendanceTimes: ["user_123": Date(timeIntervalSince1970: 1_000_100)]
+        )
+    ]
+ 
+    func observeAttendanceRecords(for eventId: String, completion: @escaping (Result<[AttendanceRecord], Error>) -> Void) -> () -> Void {
+        if shouldThrowError {
+            completion(.failure(NSError(domain: "Test", code: 400)))
+        } else {
+            completion(.success(mockRecords.filter { $0.eventId == eventId }))
+        }
+        return {}
+    }
+ 
+    func saveRecord(_ record: AttendanceRecord) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        var saved = record
+        if saved.id == nil { saved = AttendanceRecord(
+            id: "rec_new",
+            eventId: record.eventId,
+            scheduleId: record.scheduleId,
+            name: record.name,
+            date: record.date,
+            attendedMemberIds: record.attendedMemberIds,
+            targetMemberIds: record.targetMemberIds,
+            attendanceTimes: record.attendanceTimes
+        )}
+        mockRecords.append(saved)
+    }
+ 
+    func deleteRecord(recordId: String) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        mockRecords.removeAll { $0.id == recordId }
+    }
+ 
+    func updateAttendance(recordId: String, attendedMemberIds: [String], attendanceTimes: [String: Date]) async throws {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        if let index = mockRecords.firstIndex(where: { $0.id == recordId }) {
+            mockRecords[index].attendedMemberIds = attendedMemberIds
+            mockRecords[index].attendanceTimes = attendanceTimes
+        }
     }
 }
 
@@ -419,3 +481,153 @@ final class EventMemberViewModelTests: XCTestCase {
         XCTAssertNil(activeEvent, "Active event harus dinull-kan jika id-nya cocok")
     }
 }
+
+@MainActor
+final class AttendanceViewModelTests: XCTestCase {
+    var mockAttendanceService: MockAttendanceService!
+    var vm: AttendanceViewModel!
+ 
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        mockAttendanceService = MockAttendanceService()
+        vm = AttendanceViewModel(attendanceService: mockAttendanceService)
+    }
+ 
+    override func tearDownWithError() throws {
+        mockAttendanceService = nil
+        vm = nil
+        try super.tearDownWithError()
+    }
+ 
+    func test_fetchRecords_Success_UpdatesList() async throws {
+        vm.fetchRecords(for: "event_abc")
+        try await Task.sleep(nanoseconds: 50_000_000)
+ 
+        XCTAssertEqual(vm.attendanceRecords.count, 1)
+        XCTAssertEqual(vm.attendanceRecords.first?.name, "Rapat Pembukaan")
+        XCTAssertTrue(vm.errorMessage.isEmpty)
+    }
+ 
+    func test_fetchRecords_Error_SetsErrorMessage() async throws {
+        mockAttendanceService.shouldThrowError = true
+ 
+        vm.fetchRecords(for: "event_abc")
+        try await Task.sleep(nanoseconds: 50_000_000)
+ 
+        XCTAssertFalse(vm.errorMessage.isEmpty, "Error message harus terisi saat service gagal")
+    }
+ 
+    func test_fetchRecords_WrongEventId_ReturnsEmpty() async throws {
+        vm.fetchRecords(for: "event_xyz")
+        try await Task.sleep(nanoseconds: 50_000_000)
+ 
+        XCTAssertTrue(vm.attendanceRecords.isEmpty, "Tidak boleh ada record untuk eventId yang salah")
+    }
+ 
+    func test_saveRecord_Success_AppendsToList() async throws {
+        let newRecord = AttendanceRecord(
+            eventId: "event_abc",
+            scheduleId: nil,
+            name: "Rapat Sesi 2",
+            date: Date(),
+            attendedMemberIds: [],
+            targetMemberIds: ["user_123"],
+            attendanceTimes: [:]
+        )
+ 
+        vm.saveRecord(newRecord)
+        try await Task.sleep(nanoseconds: 50_000_000)
+ 
+        XCTAssertEqual(mockAttendanceService.mockRecords.count, 2, "Record baru harus tersimpan di service")
+        XCTAssertTrue(vm.errorMessage.isEmpty)
+    }
+ 
+    func test_saveRecord_Error_SetsErrorMessage() async throws {
+        mockAttendanceService.shouldThrowError = true
+ 
+        let newRecord = AttendanceRecord(
+            eventId: "event_abc",
+            scheduleId: nil,
+            name: "Gagal Simpan",
+            date: Date(),
+            attendedMemberIds: [],
+            targetMemberIds: [],
+            attendanceTimes: [:]
+        )
+ 
+        vm.saveRecord(newRecord)
+        try await Task.sleep(nanoseconds: 50_000_000)
+ 
+        XCTAssertFalse(vm.errorMessage.isEmpty, "Error message harus terisi saat saveRecord gagal")
+    }
+ 
+    func test_deleteRecord_Success_RemovesFromList() async throws {
+        vm.fetchRecords(for: "event_abc")
+        try await Task.sleep(nanoseconds: 50_000_000)
+ 
+        vm.deleteRecord(recordId: "rec_abc")
+        try await Task.sleep(nanoseconds: 50_000_000)
+ 
+        XCTAssertTrue(mockAttendanceService.mockRecords.isEmpty, "Record harus terhapus dari service")
+        XCTAssertTrue(vm.errorMessage.isEmpty)
+    }
+ 
+    func test_deleteRecord_Error_SetsErrorMessage() async throws {
+        mockAttendanceService.shouldThrowError = true
+ 
+        vm.deleteRecord(recordId: "rec_abc")
+        try await Task.sleep(nanoseconds: 50_000_000)
+ 
+        XCTAssertFalse(vm.errorMessage.isEmpty, "Error message harus terisi saat deleteRecord gagal")
+    }
+ 
+    func test_updateAttendance_Success_UpdatesService() async throws {
+        let newTime = Date()
+        vm.updateAttendance(
+            recordId: "rec_abc",
+            attendedMemberIds: ["user_123", "user_456"],
+            attendanceTimes: ["user_123": newTime, "user_456": newTime]
+        )
+        try await Task.sleep(nanoseconds: 50_000_000)
+ 
+        let updated = mockAttendanceService.mockRecords.first { $0.id == "rec_abc" }
+        XCTAssertEqual(updated?.attendedMemberIds.count, 2, "attendedMemberIds harus ter-update menjadi 2 anggota")
+        XCTAssertTrue(vm.errorMessage.isEmpty)
+    }
+ 
+    func test_updateAttendance_Error_SetsErrorMessage() async throws {
+        mockAttendanceService.shouldThrowError = true
+ 
+        vm.updateAttendance(
+            recordId: "rec_abc",
+            attendedMemberIds: ["user_123"],
+            attendanceTimes: [:]
+        )
+        try await Task.sleep(nanoseconds: 50_000_000)
+ 
+        XCTAssertFalse(vm.errorMessage.isEmpty, "Error message harus terisi saat updateAttendance gagal")
+    }
+ 
+    func test_getRecords_FiltersCorrectlyByEventId() async throws {
+        mockAttendanceService.mockRecords.append(
+            AttendanceRecord(
+                id: "rec_other",
+                eventId: "event_xyz",
+                scheduleId: nil,
+                name: "Event Lain",
+                date: Date(),
+                attendedMemberIds: [],
+                targetMemberIds: [],
+                attendanceTimes: [:]
+            )
+        )
+ 
+        vm.fetchRecords(for: "event_abc")
+        try await Task.sleep(nanoseconds: 50_000_000)
+ 
+        let filtered = vm.getRecords(for: "event_abc")
+        XCTAssertEqual(filtered.count, 1, "getRecords harus hanya mengembalikan record milik event_abc")
+        XCTAssertEqual(filtered.first?.id, "rec_abc")
+    }
+}
+ 

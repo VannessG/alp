@@ -12,8 +12,6 @@ protocol EventMemberServiceProtocol {
     func observeEventMembers(for eventId: String, completion: @escaping (Result<[EventMember], Error>) -> Void) -> () -> Void
     func updateMemberRoleAndDivision(memberId: String, newRole: Role, newDivision: String) async throws
     func assignMemberToDivision(memberId: String, divisionName: String) async throws
-    func addActivityPoints(to memberId: String, amount: Int) async throws
-    func addGlobalUserPoints(to userId: String, amount: Int) async throws
 }
 
 class EventMemberService: EventMemberServiceProtocol {
@@ -51,18 +49,6 @@ class EventMemberService: EventMemberServiceProtocol {
     func assignMemberToDivision(memberId: String, divisionName: String) async throws {
         try await db.collection("event_members").document(memberId).updateData([
             "division": divisionName
-        ])
-    }
-    
-    func addActivityPoints(to memberId: String, amount: Int) async throws {
-        try await db.collection("event_members").document(memberId).updateData([
-            "activityPoints": FieldValue.increment(Int64(amount))
-        ])
-    }
-    
-    func addGlobalUserPoints(to userId: String, amount: Int) async throws {
-        try await db.collection("users").document(userId).updateData([
-            "globalPoints": FieldValue.increment(Int64(amount))
         ])
     }
 }

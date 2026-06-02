@@ -63,7 +63,15 @@ struct EditMemberRoleView: View {
                     Button("Simpan") {
                         if let id = member.id {
                             let finalDivision = selectedRole == .owner ? "General" : divisionName
-                            memberVM.updateMember(memberId: id, newRole: selectedRole, newDivision: finalDivision)
+                            let currentUserId = authVM.currentUser?.id
+                            let eventId = activeEvent?.id ?? ""
+                            memberVM.updateMember(
+                                    memberId: id,
+                                    newRole: selectedRole,
+                                    newDivision: finalDivision,
+                                    currentUserId: currentUserId,
+                                    eventId: eventId
+                            )
                         }
                         dismiss()
                     }
