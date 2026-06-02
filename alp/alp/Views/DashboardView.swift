@@ -12,6 +12,7 @@ struct DashboardView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject var memberVM: EventMemberViewModel
     @EnvironmentObject var divisionVM: DivisionViewModel
+    @EnvironmentObject var attendanceVM: AttendanceViewModel
     @Environment(\.horizontalSizeClass) var sizeClass
 
     @State private var showAnnouncementInput = false
@@ -220,6 +221,11 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
 
                 NavigationLink {
+                    AttendanceView()
+                            .environmentObject(attendanceVM)
+                            .environmentObject(eventVM)
+                            .environmentObject(memberVM)
+                            .environmentObject(authVM)
                 } label: {
                     menuButton(icon: "checkmark.square.fill", label: "Presence", color: .purple)
                 }
@@ -366,4 +372,5 @@ struct DashboardView: View {
         .environmentObject(mockEvent)
         .environmentObject(EventMemberViewModel())
         .environmentObject(DivisionViewModel())
+        .environmentObject(AttendanceViewModel())
 }

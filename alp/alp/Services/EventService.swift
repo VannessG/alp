@@ -56,12 +56,15 @@ class EventService: EventServiceProtocol {
         let ref = try db.collection("events").addDocument(from: newEvent)
         let snap = try await ref.getDocument()
         
-        guard let event = try? snap.data(as: Event.self) else {
+        guard let event = try? snap.data(as: Event.self), let eventId = event.id else {
             throw NSError(domain: "EventService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Gagal memparsing data event"])
         }
+        let ownerMember = EventMember(eventId: eventId, userId: ownerId, role: .owner, division: "General")
+        try db.collection("event_members").addDocument(from: ownerMember)
+        
         return event
     }
-    
+
     func joinEvent(code: String, userId: String) async throws -> Event {
         let snap = try await db.collection("events").whereField("joinCode", isEqualTo: code).getDocuments()
         
@@ -74,6 +77,9 @@ class EventService: EventServiceProtocol {
         if !event.members.contains(userId) {
             event.members.append(userId)
             try firstDoc.reference.setData(from: event)
+            guard let eventId = event.id else { return event }
+            let newMember = EventMember(eventId: eventId, userId: userId, role: .member, division: "Unassigned")
+            try db.collection("event_members").addDocument(from: newMember)
         }
         
         return event
