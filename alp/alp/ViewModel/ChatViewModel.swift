@@ -27,7 +27,7 @@ class ChatViewModel: ObservableObject {
     
     func startListening(roomId: String) {
         listenerRegistration?.remove()
-        
+
         listenerRegistration = service.observeMessages(roomId: roomId) { [weak self] result in
             guard let self = self else { return }
             
@@ -35,6 +35,7 @@ class ChatViewModel: ObservableObject {
                 switch result {
                 case .success(let fetchedMessages):
                     self.messages = fetchedMessages
+                    print("Fetched messages: \(fetchedMessages.count)")
                 case .failure(let error):
                     self.errorMessage = "Gagal memuat pesan: \(error.localizedDescription)"
                 }
@@ -55,11 +56,12 @@ class ChatViewModel: ObservableObject {
             text: text,
             timestamp: Date()
         )
-        
         do {
             try await service.sendMessage(newMessage)
+            print("Pesan berhasil dikirim")
         } catch {
             errorMessage = "Gagal mengirim pesan: \(error.localizedDescription)"
+            print(errorMessage ?? "")
         }
     }
 }

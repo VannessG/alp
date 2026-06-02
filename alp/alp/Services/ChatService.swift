@@ -22,13 +22,22 @@ class FirestoreChatService: ChatServiceProtocol {
     }
     
     func sendMessage(_ message: ChatMessage) async throws {
-        try collectionRef.addDocument(from: message)
+        try await db.collection("messages").addDocument(data: [
+            "roomId": message.roomId,
+            "senderId": message.senderId,
+            "senderName": message.senderName,
+            "text": message.text,
+            "timestamp": Timestamp(date: Date())
+        ])
+
+        try await db.collection("rooms").document(message.roomId).updateData([
+            "lastMessage": message.text,
+            "lastTimestamp": Timestamp(date: Date())
+        ])
     }
     
     func observeMessages(roomId: String, completion: @escaping (Result<[ChatMessage], Error>) -> Void) -> ListenerRegistration? {
-        let query = collectionRef
-            .whereField("roomId", isEqualTo: roomId)
-            .order(by: "timestamp", descending: false)
+        let query = collectionRef.whereField("roomId", isEqualTo: roomId)
         
         return query.addSnapshotListener { snapshot, error in
             if let error = error {
@@ -41,8 +50,20 @@ class FirestoreChatService: ChatServiceProtocol {
                 return
             }
             
-            let messages = documents.compactMap { try? $0.data(as: ChatMessage.self) }
-            completion(.success(messages))
+            let messages = documents.compactMap { doc -> ChatMessage? in
+                let data = doc.data()
+                return ChatMessage(
+                    id: doc.documentID,
+                    roomId: data["roomId"] as? String ?? "",
+                    senderId: data["senderId"] as? String ?? "",
+                    senderName: data["senderName"] as? String ?? "",
+                    text: data["text"] as? String ?? "",
+                    timestamp: (data["timestamp"] as? Timestamp)?.dateValue()
+                )
+            }
+
+            let sorted = messages.sorted { ($0.timestamp ?? Date.distantPast) < ($1.timestamp ?? Date.distantPast) }
+            completion(.success(sorted))
         }
     }
 }
