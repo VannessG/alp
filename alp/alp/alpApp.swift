@@ -24,6 +24,7 @@ struct alpApp: App {
     @StateObject var memberVM = EventMemberViewModel()
     @StateObject var divisionVM = DivisionViewModel()
     @StateObject var attendanceVM = AttendanceViewModel()
+    @StateObject var scheduleVM = ScheduleViewModel()
 
     var body: some Scene {
         WindowGroup {
@@ -33,6 +34,7 @@ struct alpApp: App {
                 .environmentObject(memberVM)
                 .environmentObject(divisionVM)
                 .environmentObject(attendanceVM)
+                .environmentObject(scheduleVM)
         }
     }
 }
