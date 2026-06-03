@@ -10,12 +10,12 @@ import Foundation
 import FirebaseFirestore
 
 struct ChatMessage: Identifiable, Codable, Equatable {
-    @DocumentID var id: String?
+    var id: String?
     var roomId: String
     var senderId: String
     var senderName: String
     var text: String
-    var timestamp: Date
+    var timestamp: Date?
     
     // Untuk Unit Testing
     static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {

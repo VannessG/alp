@@ -10,6 +10,7 @@ import FirebaseFirestore
 
 protocol ChatServiceProtocol {
     func sendMessage(_ message: ChatMessage) async throws
+    func markRoomRead(roomId: String, userId: String) async throws
     func observeMessages(roomId: String, completion: @escaping (Result<[ChatMessage], Error>) -> Void) -> ListenerRegistration?
 }
 
@@ -22,13 +23,33 @@ class FirestoreChatService: ChatServiceProtocol {
     }
     
     func sendMessage(_ message: ChatMessage) async throws {
-        try collectionRef.addDocument(from: message)
+        let now = Date()
+        try await db.collection("messages").addDocument(data: [
+            "roomId": message.roomId,
+            "senderId": message.senderId,
+            "senderName": message.senderName,
+            "text": message.text,
+            "timestamp": Timestamp(date: now)
+        ])
+
+        try await db.collection("rooms").document(message.roomId).updateData([
+            "lastMessage": message.text,
+            "lastTimestamp": Timestamp(date: now),
+            "readBy.\(message.senderId)": Timestamp(date: now)
+        ])
+    }
+
+    func markRoomRead(roomId: String, userId: String) async throws {
+        guard !roomId.isEmpty, !userId.isEmpty else { return }
+        try await db.collection("rooms").document(roomId).updateData([
+            "readBy.\(userId)": Timestamp(date: Date())
+        ])
     }
     
     func observeMessages(roomId: String, completion: @escaping (Result<[ChatMessage], Error>) -> Void) -> ListenerRegistration? {
-        let query = collectionRef
-            .whereField("roomId", isEqualTo: roomId)
+        let query = collectionRef.whereField("roomId", isEqualTo: roomId)
             .order(by: "timestamp", descending: false)
+            .limit(toLast: 100)
         
         return query.addSnapshotListener { snapshot, error in
             if let error = error {
@@ -41,7 +62,18 @@ class FirestoreChatService: ChatServiceProtocol {
                 return
             }
             
-            let messages = documents.compactMap { try? $0.data(as: ChatMessage.self) }
+            let messages = documents.compactMap { doc -> ChatMessage? in
+                let data = doc.data()
+                return ChatMessage(
+                    id: doc.documentID,
+                    roomId: data["roomId"] as? String ?? "",
+                    senderId: data["senderId"] as? String ?? "",
+                    senderName: data["senderName"] as? String ?? "",
+                    text: data["text"] as? String ?? "",
+                    timestamp: (data["timestamp"] as? Timestamp)?.dateValue()
+                )
+            }
+
             completion(.success(messages))
         }
     }
