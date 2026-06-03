@@ -26,9 +26,8 @@ class FirestoreScheduleService: ScheduleServiceProtocol {
     func fetchSchedules(forEventId eventId: String) async throws -> [Schedule] {
         let snapshot = try await collectionRef
             .whereField("eventId", isEqualTo: eventId)
-            .order(by: "date")
             .getDocuments()
-            
+        
         return snapshot.documents.compactMap { document in
             try? document.data(as: Schedule.self)
         }

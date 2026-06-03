@@ -12,12 +12,23 @@ struct DashboardView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject var memberVM: EventMemberViewModel
     @EnvironmentObject var divisionVM: DivisionViewModel
+    @EnvironmentObject var scheduleVM: ScheduleViewModel
     @EnvironmentObject var attendanceVM: AttendanceViewModel
     @Environment(\.horizontalSizeClass) var sizeClass
 
     @State private var showAnnouncementInput = false
     @State private var announcementText = ""
 
+    private var nearestSchedule: Schedule? {
+
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+
+        return scheduleVM.schedules
+            .filter { $0.date >= startOfToday }
+            .sorted { $0.date < $1.date }
+            .first
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -134,6 +145,11 @@ struct DashboardView: View {
                 }
             }
             .preferredColorScheme(.light)
+         .task {
+                if let eventId = eventVM.activeEvent?.id {
+                    await scheduleVM.loadSchedules(for: eventId)
+                }
+            }
         }
     }
 
@@ -236,34 +252,86 @@ struct DashboardView: View {
 
     private var upcomingScheduleSection: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 6) {
-                RoundedRectangle(cornerRadius: 2).fill(Color.blue).frame(width: 3, height: 16)
-                Image(systemName: "calendar").font(.system(size: 12, weight: .semibold)).foregroundColor(.blue)
-                Text("Upcoming Schedule").font(.system(size: 13, weight: .bold)).foregroundColor(.secondary).textCase(.uppercase).tracking(0.5)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: 12) {
-                Image(systemName: "calendar.badge.clock")
-                    .font(.system(size: 24))
-                    .foregroundColor(.secondary.opacity(0.5))
+              HStack(spacing: 6) {
+                  RoundedRectangle(cornerRadius: 2)
+                      .fill(Color.blue)
+                      .frame(width: 3, height: 16)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Tidak ada jadwal terdekat")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.primary)
-                    Text("Jadwal yang akan datang tampil di sini.")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
-            }
-            .padding(16)
-            .background(Color(UIColor.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.gray.opacity(0.15), lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
-        }
+                  Image(systemName: "calendar")
+                      .font(.system(size: 12, weight: .semibold))
+                      .foregroundColor(.blue)
+
+                  Text("Upcoming Schedule")
+                      .font(.system(size: 13, weight: .bold))
+                      .foregroundColor(.secondary)
+                      .textCase(.uppercase)
+                      .tracking(0.5)
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
+
+              HStack(spacing: 12) {
+
+                  Image(systemName: "calendar.badge.clock")
+                      .font(.system(size: 24))
+                      .foregroundColor(.blue)
+
+                  VStack(alignment: .leading, spacing: 4) {
+
+                      if let schedule = nearestSchedule {
+
+                          Text(schedule.title)
+                              .font(.system(size: 14, weight: .semibold))
+                              .foregroundColor(.primary)
+
+                          Text(
+                              schedule.date.formatted(
+                                  date: .abbreviated,
+                                  time: .shortened
+                              )
+                          )
+                          .font(.system(size: 12))
+                          .foregroundColor(.secondary)
+
+                          Text(schedule.location)
+                              .font(.system(size: 12))
+                              .foregroundColor(.secondary)
+
+                      } else {
+
+                          Text("Tidak ada jadwal terdekat")
+                              .font(.system(size: 14, weight: .semibold))
+
+                          Text("Jadwal yang akan datang tampil di sini.")
+                              .font(.system(size: 12))
+                              .foregroundColor(.secondary)
+                      }
+                  }
+
+                  Spacer()
+              }
+              .padding(16)
+              .background(Color(UIColor.secondarySystemGroupedBackground))
+              .clipShape(
+                  RoundedRectangle(
+                      cornerRadius: 16,
+                      style: .continuous
+                  )
+              )
+              .overlay(
+                  RoundedRectangle(
+                      cornerRadius: 16,
+                      style: .continuous
+                  )
+                  .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+              )
+              .shadow(
+                  color: Color.black.opacity(0.03),
+                  radius: 5,
+                  x: 0,
+                  y: 2
+              )
+          }
     }
 
     private func dangerZoneSection(isReadOnly: Bool) -> some View {

@@ -17,6 +17,11 @@ struct MainTabView: View {
                     Image(systemName: "house.fill")
                     Text("Home")
                 }
+            ScheduleView()
+                .tabItem{
+                    Image(systemName: "calendar")
+                    Text("Schedule")
+                }
             
             ChatView()
                 .tabItem {
