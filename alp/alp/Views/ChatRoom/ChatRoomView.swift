@@ -52,7 +52,12 @@ struct ChatRoomView: View {
                     }
                 }
         }
-        .onAppear { vm.startListening(roomId: roomId) }
+            .onAppear {
+                vm.startListening(
+                    roomId: roomId,
+                    userId: authVM.currentUser?.id ?? ""
+                )
+            }
         .onDisappear { vm.stopListening() }
     }
 }

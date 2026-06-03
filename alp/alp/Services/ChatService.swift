@@ -10,6 +10,7 @@ import FirebaseFirestore
 
 protocol ChatServiceProtocol {
     func sendMessage(_ message: ChatMessage) async throws
+    func markRoomRead(roomId: String, userId: String) async throws
     func observeMessages(roomId: String, completion: @escaping (Result<[ChatMessage], Error>) -> Void) -> ListenerRegistration?
 }
 
@@ -22,22 +23,33 @@ class FirestoreChatService: ChatServiceProtocol {
     }
     
     func sendMessage(_ message: ChatMessage) async throws {
+        let now = Date()
         try await db.collection("messages").addDocument(data: [
             "roomId": message.roomId,
             "senderId": message.senderId,
             "senderName": message.senderName,
             "text": message.text,
-            "timestamp": Timestamp(date: Date())
+            "timestamp": Timestamp(date: now)
         ])
 
         try await db.collection("rooms").document(message.roomId).updateData([
             "lastMessage": message.text,
-            "lastTimestamp": Timestamp(date: Date())
+            "lastTimestamp": Timestamp(date: now),
+            "readBy.\(message.senderId)": Timestamp(date: now)
+        ])
+    }
+
+    func markRoomRead(roomId: String, userId: String) async throws {
+        guard !roomId.isEmpty, !userId.isEmpty else { return }
+        try await db.collection("rooms").document(roomId).updateData([
+            "readBy.\(userId)": Timestamp(date: Date())
         ])
     }
     
     func observeMessages(roomId: String, completion: @escaping (Result<[ChatMessage], Error>) -> Void) -> ListenerRegistration? {
         let query = collectionRef.whereField("roomId", isEqualTo: roomId)
+            .order(by: "timestamp", descending: false)
+            .limit(toLast: 100)
         
         return query.addSnapshotListener { snapshot, error in
             if let error = error {
@@ -62,8 +74,7 @@ class FirestoreChatService: ChatServiceProtocol {
                 )
             }
 
-            let sorted = messages.sorted { ($0.timestamp ?? Date.distantPast) < ($1.timestamp ?? Date.distantPast) }
-            completion(.success(sorted))
+            completion(.success(messages))
         }
     }
 }
