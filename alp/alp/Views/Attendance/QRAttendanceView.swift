@@ -35,6 +35,7 @@ struct QRAttendanceView: View {
     @EnvironmentObject var attendanceVM: AttendanceViewModel
     @EnvironmentObject var memberVM: EventMemberViewModel
     @EnvironmentObject var eventVM: EventViewModel
+    @EnvironmentObject var authVM: AuthViewModel
     @Environment(\.dismiss) var dismiss
     @Environment(\.horizontalSizeClass) var sizeClass
 
@@ -68,6 +69,8 @@ struct QRAttendanceView: View {
                         record: record,
                         members: memberVM.members,
                         registeredUsers: memberVM.registeredUsers,
+                        currentUserRole: memberVM.currentUserRole,
+                        currentUserId: authVM.currentUser?.id,
                         selectedMemberId: $selectedMemberId
                     )
                     .transition(.opacity)
@@ -144,17 +147,25 @@ private struct QRGeneratePanel: View {
     let record: AttendanceRecord?
     let members: [EventMember]
     let registeredUsers: [User]
+    let currentUserRole: Role
+    let currentUserId: String?
     @Binding var selectedMemberId: String?
 
     @Environment(\.horizontalSizeClass) var sizeClass
 
+    private var isMember: Bool { currentUserRole == .member }
+
+    private var effectiveMemberId: String? {
+        isMember ? currentUserId : selectedMemberId
+    }
+
     private var qrPayload: String {
-        guard let uid = selectedMemberId else { return "" }
+        guard let uid = effectiveMemberId else { return "" }
         return "alp-attendance://\(uid)"
     }
 
     private var selectedUser: User? {
-        guard let uid = selectedMemberId else { return nil }
+        guard let uid = effectiveMemberId else { return nil }
         return registeredUsers.first { $0.id == uid }
     }
 
@@ -182,7 +193,9 @@ private struct QRGeneratePanel: View {
                     selectPromptCard
                 }
 
-                memberPickerSection
+                if !isMember {
+                    memberPickerSection
+                }
 
                 hintCard
 
@@ -293,14 +306,14 @@ private struct QRGeneratePanel: View {
                 Circle()
                     .fill(DSQR.indigoMuted)
                     .frame(width: 56, height: 56)
-                Image(systemName: "person.crop.square.badge.camera")
+                Image(systemName: isMember ? "qrcode.viewfinder" : "person.crop.square.badge.camera")
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundColor(DSQR.indigo)
             }
-            Text("Pilih Anggota")
+            Text(isMember ? "QR Tidak Tersedia" : "Pilih Anggota")
                 .font(.system(size: 15, weight: .bold))
                 .foregroundColor(DSQR.textPrimary)
-            Text("Pilih nama anggota di bawah untuk menampilkan QR miliknya.")
+            Text(isMember ? "Data akun Anda tidak ditemukan dalam sesi ini." : "Pilih nama anggota di bawah untuk menampilkan QR miliknya.")
                 .font(.system(size: 13))
                 .foregroundColor(DSQR.textSecondary)
                 .multilineTextAlignment(.center)
@@ -396,7 +409,9 @@ private struct QRGeneratePanel: View {
                 Text("Cara menggunakan")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(DSQR.textPrimary)
-                Text("Pilih nama anggota dari daftar di atas. QR unik milik anggota tersebut akan tampil. Scan QR itu melalui tab **Scan QR** untuk mencatat kehadirannya.")
+                Text(isMember
+                     ? "Tunjukkan QR ini kepada koordinator atau owner untuk dicatat kehadirannya melalui tab **Scan QR**."
+                     : "Pilih nama anggota dari daftar di atas. QR unik milik anggota tersebut akan tampil. Scan QR itu melalui tab **Scan QR** untuk mencatat kehadirannya.")
                     .font(.system(size: 13))
                     .foregroundColor(DSQR.textSecondary)
             }
