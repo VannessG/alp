@@ -75,14 +75,25 @@ struct AttendanceView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination:
-                        PresenceHistoryView()
-                            .environmentObject(attendanceVM)
-                            .environmentObject(memberVM)
-                            .environmentObject(eventVM)
-                    ) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .foregroundColor(DSAtt.indigo)
+                    HStack(spacing: 4) {
+                        NavigationLink(destination:
+                            QRAttendanceView()
+                                .environmentObject(attendanceVM)
+                                .environmentObject(memberVM)
+                                .environmentObject(eventVM)
+                        ) {
+                            Image(systemName: "qrcode.viewfinder")
+                                .foregroundColor(DSAtt.indigo)
+                        }
+                        NavigationLink(destination:
+                            PresenceHistoryView()
+                                .environmentObject(attendanceVM)
+                                .environmentObject(memberVM)
+                                .environmentObject(eventVM)
+                        ) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .foregroundColor(DSAtt.indigo)
+                        }
                     }
                 }
             }

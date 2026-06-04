@@ -34,9 +34,22 @@
 		4715ECBA2FC9041E00BB6135 /* alpUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = alpUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E706263D2FD19D8400529606 /* Exceptions for "alp" folder in "alp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4715ECA22FC9041D00BB6135 /* alp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		4715ECA52FC9041D00BB6135 /* alp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E706263D2FD19D8400529606 /* Exceptions for "alp" folder in "alp" target */,
+			);
 			path = alp;
 			sourceTree = "<group>";
 		};
@@ -410,6 +423,8 @@
 				DEVELOPMENT_TEAM = JK25J8YVK5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = alp/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Kamera digunakan untuk scan QR presensi anggota.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -443,6 +458,8 @@
 				DEVELOPMENT_TEAM = JK25J8YVK5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = alp/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Kamera digunakan untuk scan QR presensi anggota.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
