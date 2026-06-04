@@ -58,10 +58,60 @@ struct AttendanceView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         if currentRole == .owner || currentRole == .coordinator {
-                            createManualButton
+                            Button(action: { showCreateManual = true }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 16, weight: .semibold))
+                                    Text("Create Manual Presence")
+                                        .font(.system(size: 15, weight: .bold))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(DSAtt.brandGradient)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .shadow(color: DSAtt.indigo.opacity(0.3), radius: 6, y: 3)
+                            }
+                            .padding(.horizontal, 16)
                         }
 
-                        membersSection
+                        VStack(spacing: 12) {
+                            attSectionHeader(title: "Members")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 16)
+
+                            HStack(spacing: 10) {
+                                Image(systemName: "magnifyingglass")
+                                    .foregroundColor(DSAtt.textTertiary)
+                                TextField("Cari anggota...", text: $searchText)
+                                    .font(.system(size: 15))
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(DSAtt.bgSurface)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(DSAtt.border, lineWidth: 1)
+                            )
+                            .padding(.horizontal, 16)
+
+                            if filteredMembers.isEmpty {
+                                Text("Anggota tidak ditemukan.")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(DSAtt.textSecondary)
+                                    .padding(.top, 10)
+                            } else {
+                                VStack(spacing: 8) {
+                                    ForEach(filteredMembers) { member in
+                                        if let user = memberVM.getUser(byId: member.userId) {
+                                            AttMemberRow(user: user, member: member)
+                                                .padding(.horizontal, 16)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     .padding(.top, 16)
                     .padding(.bottom, 40)
@@ -98,7 +148,44 @@ struct AttendanceView: View {
                 }
             }
             .sheet(isPresented: $showCreateManual) {
-                manualCreationSheet
+                NavigationStack {
+                    Form {
+                        Section(header: Text("Detail Kehadiran")) {
+                            TextField("Presence Name", text: $manualName)
+                            DatePicker("Date & Start Time", selection: $manualDate)
+                        }
+                    }
+                    .navigationTitle("New Manual Presence")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Cancel") {
+                                showCreateManual = false
+                                manualName = ""
+                                manualDate = Date()
+                            }
+                        }
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            NavigationLink(destination:
+                                ManualAttendanceCheckView(
+                                    name: manualName,
+                                    date: manualDate,
+                                    onSave: {
+                                        showCreateManual = false
+                                        manualName = ""
+                                        manualDate = Date()
+                                    }
+                                )
+                                .environmentObject(attendanceVM)
+                                .environmentObject(memberVM)
+                                .environmentObject(eventVM)
+                            ) {
+                                Text("Next").bold()
+                            }
+                            .disabled(manualName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                    }
+                }
             }
             .onAppear {
                 if let eventId = activeEvent?.id {
@@ -107,105 +194,6 @@ struct AttendanceView: View {
                 }
             }
             .preferredColorScheme(.light)
-        }
-    }
-
-    private var createManualButton: some View {
-        Button(action: { showCreateManual = true }) {
-            HStack(spacing: 8) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                Text("Create Manual Presence")
-                    .font(.system(size: 15, weight: .bold))
-            }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(DSAtt.brandGradient)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .shadow(color: DSAtt.indigo.opacity(0.3), radius: 6, y: 3)
-        }
-        .padding(.horizontal, 16)
-    }
-
-    private var membersSection: some View {
-        VStack(spacing: 12) {
-            attSectionHeader(title: "Members")
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(DSAtt.textTertiary)
-                TextField("Cari anggota...", text: $searchText)
-                    .font(.system(size: 15))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(DSAtt.bgSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(DSAtt.border, lineWidth: 1)
-            )
-            .padding(.horizontal, 16)
-
-            if filteredMembers.isEmpty {
-                Text("Anggota tidak ditemukan.")
-                    .font(.system(size: 14))
-                    .foregroundColor(DSAtt.textSecondary)
-                    .padding(.top, 10)
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(filteredMembers) { member in
-                        if let user = memberVM.getUser(byId: member.userId) {
-                            AttMemberRow(user: user, member: member)
-                                .padding(.horizontal, 16)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private var manualCreationSheet: some View {
-        NavigationStack {
-            Form {
-                Section(header: Text("Detail Kehadiran")) {
-                    TextField("Presence Name", text: $manualName)
-                    DatePicker("Date & Start Time", selection: $manualDate)
-                }
-            }
-            .navigationTitle("New Manual Presence")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        showCreateManual = false
-                        manualName = ""
-                        manualDate = Date()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination:
-                        ManualAttendanceCheckView(
-                            name: manualName,
-                            date: manualDate,
-                            onSave: {
-                                showCreateManual = false
-                                manualName = ""
-                                manualDate = Date()
-                            }
-                        )
-                        .environmentObject(attendanceVM)
-                        .environmentObject(memberVM)
-                        .environmentObject(eventVM)
-                    ) {
-                        Text("Next").bold()
-                    }
-                    .disabled(manualName.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
         }
     }
 
