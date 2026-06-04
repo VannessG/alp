@@ -37,7 +37,9 @@ struct PresenceHistoryView: View {
                         ForEach(records) { record in
                             NavigationLink(destination:
                                 PresenceHistoryDetailView(record: record)
+                                    .environmentObject(attendanceVM)
                                     .environmentObject(memberVM)
+                                    .environmentObject(eventVM)
                             ) {
                                 historyRow(record: record)
                             }
@@ -182,22 +184,36 @@ struct PresenceHistoryView: View {
 }
 
 struct PresenceHistoryDetailView: View {
+    @EnvironmentObject var attendanceVM: AttendanceViewModel
     @EnvironmentObject var memberVM: EventMemberViewModel
+    @EnvironmentObject var eventVM: EventViewModel
     let record: AttendanceRecord
 
     private let indigo = Color(red: 0.29, green: 0.34, blue: 0.90)
     private let purple = Color(red: 0.58, green: 0.28, blue: 0.90)
 
+    private var canOpenQR: Bool {
+        let role = memberVM.currentUserRole
+        return role == .owner || role == .coordinator
+    }
+
+    private var liveRecord: AttendanceRecord {
+        attendanceVM.attendanceRecords.first { $0.id == record.id } ?? record
+    }
+
     private var presentMembers: [String] {
-        record.targetMemberIds.filter { record.attendedMemberIds.contains($0) }
+        liveRecord.targetMemberIds.filter { liveRecord.attendedMemberIds.contains($0) }
     }
 
     private var absentMembers: [String] {
-        record.targetMemberIds.filter { !record.attendedMemberIds.contains($0) }
+        liveRecord.targetMemberIds.filter { !liveRecord.attendedMemberIds.contains($0) }
     }
 
     var body: some View {
         List {
+            if canOpenQR {
+                qrSessionSection
+            }
             summarySection
             presentSection
             absentSection
@@ -208,15 +224,46 @@ struct PresenceHistoryDetailView: View {
         .preferredColorScheme(.light)
     }
 
+    private var qrSessionSection: some View {
+        Section {
+            NavigationLink(destination:
+                QRAttendanceView(record: liveRecord)
+                    .environmentObject(attendanceVM)
+                    .environmentObject(memberVM)
+                    .environmentObject(eventVM)
+            ) {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(indigo.opacity(0.12))
+                            .frame(width: 40, height: 40)
+                        Image(systemName: "qrcode.viewfinder")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(indigo)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Buka QR Session")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(Color(UIColor.label))
+                        Text("Scan atau tampilkan QR untuk sesi ini")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(UIColor.secondaryLabel))
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
     private var summarySection: some View {
         Section(header: Text("Detail Kehadiran")) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(record.name)
+                Text(liveRecord.name)
                     .font(.headline)
 
                 HStack(spacing: 4) {
                     Image(systemName: "calendar")
-                    Text(record.date.formatted())
+                    Text(liveRecord.date.formatted())
                 }
                 .font(.subheadline)
                 .foregroundColor(.secondary)
@@ -233,7 +280,7 @@ struct PresenceHistoryDetailView: View {
             }
             .padding(.vertical, 4)
 
-            let rate = record.targetMemberIds.isEmpty ? 0.0 : Double(record.attendedMemberIds.count) / Double(record.targetMemberIds.count)
+            let rate = liveRecord.targetMemberIds.isEmpty ? 0.0 : Double(liveRecord.attendedMemberIds.count) / Double(liveRecord.targetMemberIds.count)
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("Tingkat Kehadiran")
@@ -280,7 +327,7 @@ struct PresenceHistoryDetailView: View {
                             Text(user.name)
                                 .font(.system(size: 15))
                             Spacer()
-                            if let time = record.attendanceTimes[uid] {
+                            if let time = liveRecord.attendanceTimes[uid] {
                                 Text(time.formatted(date: .omitted, time: .shortened))
                                     .font(.system(size: 13))
                                     .foregroundColor(.secondary)
