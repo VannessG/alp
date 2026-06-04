@@ -39,25 +39,20 @@ struct QRAttendanceView: View {
     @Environment(\.horizontalSizeClass) var sizeClass
 
     var record: AttendanceRecord?
-
     var onScanComplete: ((String) -> Void)? = nil
 
     @State private var selectedTab: QRTab = .generate
-    @State private var scannedUserId: String? = nil
     @State private var showScanResult = false
     @State private var scanResultIsSuccess = false
     @State private var scanResultMessage = ""
 
-    private var qrPayload: String {
-        record?.id ?? "no-record"
-    }
+    @State private var selectedMemberId: String? = nil
 
     var body: some View {
         ZStack {
             DSQR.bgPrimary.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // MARK: Segmented Tab
                 Picker("Mode", selection: $selectedTab) {
                     ForEach(QRTab.allCases, id: \.self) { tab in
                         Text(tab.rawValue).tag(tab)
@@ -67,11 +62,15 @@ struct QRAttendanceView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
 
-                // MARK: Tab Content
                 switch selectedTab {
                 case .generate:
-                    QRGeneratePanel(payload: qrPayload, record: record)
-                        .transition(.opacity)
+                    QRGeneratePanel(
+                        record: record,
+                        members: memberVM.members,
+                        registeredUsers: memberVM.registeredUsers,
+                        selectedMemberId: $selectedMemberId
+                    )
+                    .transition(.opacity)
                 case .scan:
                     QRScanPanel(
                         onScanned: handleScannedCode(_:)
@@ -142,50 +141,50 @@ struct QRAttendanceView: View {
 }
 
 private struct QRGeneratePanel: View {
-    let payload: String
     let record: AttendanceRecord?
+    let members: [EventMember]
+    let registeredUsers: [User]
+    @Binding var selectedMemberId: String?
 
     @Environment(\.horizontalSizeClass) var sizeClass
 
+    private var qrPayload: String {
+        guard let uid = selectedMemberId else { return "" }
+        return "alp-attendance://\(uid)"
+    }
+
+    private var selectedUser: User? {
+        guard let uid = selectedMemberId else { return nil }
+        return registeredUsers.first { $0.id == uid }
+    }
+
+    private var sortedMembers: [EventMember] {
+        guard let rec = record else { return members }
+        return members.sorted { a, b in
+            let aAttended = rec.attendedMemberIds.contains(a.userId)
+            let bAttended = rec.attendedMemberIds.contains(b.userId)
+            if aAttended == bAttended { return false }
+            return !aAttended
+        }
+    }
+
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
 
                 if let rec = record {
                     infoCard(rec)
                 }
 
-                VStack(spacing: 20) {
-                    sectionHeader("QR Code Sesi")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    VStack(spacing: 12) {
-                        Image(uiImage: generateQRCode(from: payload))
-                            .interpolation(.none)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 220, height: 220)
-                            .padding(16)
-                            .background(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                            .shadow(color: DSQR.indigo.opacity(0.12), radius: 16, x: 0, y: 6)
-
-                        Text("Tunjukkan QR ini kepada peserta\nuntuk melakukan scan kehadiran")
-                            .font(.system(size: 13))
-                            .foregroundColor(DSQR.textSecondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
+                if let user = selectedUser, !qrPayload.isEmpty {
+                    qrCard(user: user)
+                } else {
+                    selectPromptCard
                 }
-                .padding(16)
-                .background(DSQR.bgSurface)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(DSQR.border, lineWidth: 1)
-                )
 
-                memberHintCard
+                memberPickerSection
+
+                hintCard
 
             }
             .padding(.horizontal, 16)
@@ -234,7 +233,161 @@ private struct QRGeneratePanel: View {
         )
     }
 
-    private var memberHintCard: some View {
+    private func qrCard(user: User) -> some View {
+        VStack(spacing: 16) {
+            sectionHeader("QR Code Anggota")
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(DSQR.indigoMuted)
+                            .frame(width: 32, height: 32)
+                        Text(String(user.name.prefix(1)).uppercased())
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(DSQR.brandGradient)
+                    }
+                    Text(user.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(DSQR.textPrimary)
+
+                    Spacer()
+
+                    if let rec = record, rec.attendedMemberIds.contains(user.id ?? "") {
+                        Label("Sudah Hadir", systemImage: "checkmark.seal.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.green)
+                    }
+                }
+
+                Image(uiImage: generateQRCode(from: qrPayload))
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 200, height: 200)
+                    .padding(16)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .shadow(color: DSQR.indigo.opacity(0.12), radius: 16, x: 0, y: 6)
+
+                Text("Scan QR ini untuk mencatat kehadiran \(user.name)")
+                    .font(.system(size: 13))
+                    .foregroundColor(DSQR.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(16)
+        .background(DSQR.bgSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(DSQR.border, lineWidth: 1)
+        )
+    }
+
+    private var selectPromptCard: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(DSQR.indigoMuted)
+                    .frame(width: 56, height: 56)
+                Image(systemName: "person.crop.square.badge.camera")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(DSQR.indigo)
+            }
+            Text("Pilih Anggota")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(DSQR.textPrimary)
+            Text("Pilih nama anggota di bawah untuk menampilkan QR miliknya.")
+                .font(.system(size: 13))
+                .foregroundColor(DSQR.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(24)
+        .background(DSQR.bgSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(DSQR.border, lineWidth: 1)
+        )
+    }
+
+    private var memberPickerSection: some View {
+        VStack(spacing: 12) {
+            sectionHeader("Pilih Anggota")
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if sortedMembers.isEmpty {
+                Text("Belum ada anggota dalam sesi ini.")
+                    .font(.system(size: 13))
+                    .foregroundColor(DSQR.textSecondary)
+                    .padding(.vertical, 8)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(sortedMembers) { member in
+                        if let user = registeredUsers.first(where: { $0.id == member.userId }) {
+                            memberRow(user: user, member: member)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func memberRow(user: User, member: EventMember) -> some View {
+        let uid = user.id ?? ""
+        let isSelected = selectedMemberId == uid
+        let isAttended = record?.attendedMemberIds.contains(uid) ?? false
+
+        return Button(action: {
+            selectedMemberId = isSelected ? nil : uid
+        }) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? DSQR.indigo : DSQR.indigoMuted)
+                        .frame(width: 36, height: 36)
+                    Text(String(user.name.prefix(1)).uppercased())
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(isSelected ? .white : DSQR.indigo)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(user.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(DSQR.textPrimary)
+                    Text(member.division)
+                        .font(.system(size: 11))
+                        .foregroundColor(DSQR.textSecondary)
+                }
+
+                Spacer()
+
+                if isAttended {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.system(size: 16))
+                } else if isSelected {
+                    Image(systemName: "qrcode")
+                        .foregroundColor(DSQR.indigo)
+                        .font(.system(size: 14))
+                }
+            }
+            .padding(12)
+            .background(isSelected ? DSQR.indigoMuted : DSQR.bgSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(isSelected ? DSQR.indigo.opacity(0.4) : DSQR.border, lineWidth: isSelected ? 1.5 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var hintCard: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "info.circle.fill")
                 .foregroundColor(DSQR.indigo)
@@ -243,7 +396,7 @@ private struct QRGeneratePanel: View {
                 Text("Cara menggunakan")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(DSQR.textPrimary)
-                Text("Tampilkan QR ini di layar. Setiap anggota membuka fitur **Scan QR** di aplikasi mereka dan mengarahkan kamera ke QR ini. Kehadiran langsung tercatat secara otomatis.")
+                Text("Pilih nama anggota dari daftar di atas. QR unik milik anggota tersebut akan tampil. Scan QR itu melalui tab **Scan QR** untuk mencatat kehadirannya.")
                     .font(.system(size: 13))
                     .foregroundColor(DSQR.textSecondary)
             }
@@ -328,7 +481,7 @@ private struct QRScanPanel: View {
 
                 Spacer()
 
-                Text("Arahkan kamera ke QR Code sesi presensi")
+                Text("Arahkan kamera ke QR Code anggota")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
@@ -418,7 +571,6 @@ private struct QRScanPanel: View {
     }
 }
 
-
 private struct QRCornerAccents: View {
     var body: some View {
         GeometryReader { geo in
@@ -430,22 +582,15 @@ private struct QRCornerAccents: View {
             let color = Color.white
 
             ZStack {
-                // Top-left
                 cornerShape(len: len, thick: thick, r: r, color: color)
                     .rotationEffect(.degrees(0))
                     .position(x: 0, y: 0)
-
-                // Top-right
                 cornerShape(len: len, thick: thick, r: r, color: color)
                     .rotationEffect(.degrees(90))
                     .position(x: w, y: 0)
-
-                // Bottom-right
                 cornerShape(len: len, thick: thick, r: r, color: color)
                     .rotationEffect(.degrees(180))
                     .position(x: w, y: h)
-
-                // Bottom-left
                 cornerShape(len: len, thick: thick, r: r, color: color)
                     .rotationEffect(.degrees(270))
                     .position(x: 0, y: h)
@@ -455,11 +600,9 @@ private struct QRCornerAccents: View {
 
     private func cornerShape(len: CGFloat, thick: CGFloat, r: CGFloat, color: Color) -> some View {
         ZStack(alignment: .topLeading) {
-            // Horizontal arm
             RoundedRectangle(cornerRadius: thick / 2)
                 .fill(color)
                 .frame(width: len, height: thick)
-            // Vertical arm
             RoundedRectangle(cornerRadius: thick / 2)
                 .fill(color)
                 .frame(width: thick, height: len)
