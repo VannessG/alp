@@ -24,7 +24,6 @@ class AttendanceService: AttendanceServiceProtocol {
     func observeAttendanceRecords(for eventId: String, completion: @escaping (Result<[AttendanceRecord], Error>) -> Void) -> () -> Void {
         let listener = db.collection("attendance_records")
             .whereField("eventId", isEqualTo: eventId)
-            .order(by: "date", descending: true)
             .addSnapshotListener { snapshot, error in
                 if let error = error {
                     completion(.failure(error))

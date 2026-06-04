@@ -25,7 +25,11 @@ struct PresenceHistoryView: View {
         ZStack {
             Color(UIColor.systemGroupedBackground).ignoresSafeArea()
 
-            if records.isEmpty {
+            if attendanceVM.isLoading {
+                loadingState
+            } else if !attendanceVM.errorMessage.isEmpty {
+                errorState
+            } else if records.isEmpty {
                 emptyState
             } else {
                 ScrollView(showsIndicators: false) {
@@ -52,6 +56,58 @@ struct PresenceHistoryView: View {
         .navigationTitle("Presence History")
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.light)
+        .onAppear {
+            if let eventId = eventVM.activeEvent?.id {
+                attendanceVM.fetchRecords(for: eventId)
+            }
+        }
+    }
+
+    private var loadingState: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.2)
+            Text("Memuat histori...")
+                .font(.system(size: 14))
+                .foregroundColor(Color(UIColor.secondaryLabel))
+        }
+    }
+
+    private var errorState: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.red.opacity(0.1))
+                    .frame(width: 70, height: 70)
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundColor(.red)
+            }
+            VStack(spacing: 4) {
+                Text("Gagal memuat histori")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Color(UIColor.label))
+                Text(attendanceVM.errorMessage)
+                    .font(.system(size: 13))
+                    .foregroundColor(Color(UIColor.secondaryLabel))
+                    .multilineTextAlignment(.center)
+            }
+            Button(action: {
+                attendanceVM.resetFetchState()
+                if let eventId = eventVM.activeEvent?.id {
+                    attendanceVM.fetchRecords(for: eventId)
+                }
+            }) {
+                Text("Coba Lagi")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 10)
+                    .background(indigo)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+        }
+        .padding(.horizontal, 40)
     }
 
     private var emptyState: some View {

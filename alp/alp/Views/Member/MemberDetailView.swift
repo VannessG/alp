@@ -113,7 +113,7 @@ struct MemberDetailView: View {
 
     private var infoCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(title: "Informasi Anggota", icon: "person.text.rectangle.fill", color: .blue)
+            sectionHeader(title: "Member Info", icon: "person.text.rectangle.fill", color: .blue)
 
             VStack(spacing: 8) {
                 infoRow(icon: "crown.fill", label: "Role", value: roleLabel(currentMember.role), color: roleColor(currentMember.role))

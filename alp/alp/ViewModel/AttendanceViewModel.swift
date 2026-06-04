@@ -13,24 +13,31 @@ class AttendanceViewModel: ObservableObject {
 
     @Published var attendanceRecords: [AttendanceRecord] = []
     @Published var errorMessage = ""
+    @Published var isLoading = false
 
     private let attendanceService: AttendanceServiceProtocol
     private var cancelListener: (() -> Void)?
+    private var currentEventId: String?
 
     init(attendanceService: AttendanceServiceProtocol = AttendanceService.shared) {
         self.attendanceService = attendanceService
     }
 
     func fetchRecords(for eventId: String) {
+        guard eventId != currentEventId else { return }
+        currentEventId = eventId
         cancelListener?()
+        isLoading = true
+        errorMessage = ""
 
         cancelListener = attendanceService.observeAttendanceRecords(for: eventId) { [weak self] result in
             guard let self = self else { return }
 
             Task { @MainActor in
+                self.isLoading = false
                 switch result {
                 case .success(let records):
-                    self.attendanceRecords = records
+                    self.attendanceRecords = records.sorted { $0.date > $1.date }
                     self.errorMessage = ""
 
                 case .failure(let error):
@@ -84,6 +91,10 @@ class AttendanceViewModel: ObservableObject {
 
     func getRecords(for eventId: String) -> [AttendanceRecord] {
         attendanceRecords.filter { $0.eventId == eventId }
+    }
+
+    func resetFetchState() {
+        currentEventId = nil
     }
 
     deinit {
