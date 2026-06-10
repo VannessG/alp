@@ -8,7 +8,12 @@
 import Foundation
 import FirebaseFirestore
 
-class RoomService {
+protocol RoomServiceProtocol {
+    func observeRooms(for userId: String, eventId: String, completion: @escaping (Result<[Room], Error>) -> Void) -> ListenerRegistration
+    func createRoom(name: String, eventId: String, participants: [User], owner: User) async throws -> String
+}
+
+class RoomService: RoomServiceProtocol {
     private let db = Firestore.firestore()
     
     func observeRooms(for userId: String, eventId: String, completion: @escaping (Result<[Room], Error>) -> Void) -> ListenerRegistration {

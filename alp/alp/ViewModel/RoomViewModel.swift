@@ -15,7 +15,11 @@ class RoomViewModel: ObservableObject {
     @Published var errorMessage = ""
     @Published var isCreatingRoom = false
     private var listener: ListenerRegistration?
-    private let service = RoomService()
+    private let service: RoomServiceProtocol
+
+    init(service: RoomServiceProtocol = RoomService()) {
+        self.service = service
+    }
 
     func startListening(for userId: String, eventId: String) {
         listener?.remove()
@@ -74,4 +78,3 @@ class RoomViewModel: ObservableObject {
         listener = nil
     }
 }
-
