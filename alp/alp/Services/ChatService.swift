@@ -23,7 +23,7 @@ class FirestoreChatService: ChatServiceProtocol {
     }
     
     func sendMessage(_ message: ChatMessage) async throws {
-        let now = Date()
+        let now = message.timestamp ?? Date()
         try await db.collection("messages").addDocument(data: [
             "roomId": message.roomId,
             "senderId": message.senderId,
@@ -51,7 +51,7 @@ class FirestoreChatService: ChatServiceProtocol {
             .order(by: "timestamp", descending: false)
             .limit(toLast: 100)
         
-        return query.addSnapshotListener { snapshot, error in
+        return query.addSnapshotListener(includeMetadataChanges: true) { snapshot, error in
             if let error = error {
                 completion(.failure(error))
                 return

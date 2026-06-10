@@ -28,7 +28,7 @@ class ChatViewModel: ObservableObject {
         listenerRegistration?.remove()
     }
     
-    func startListening(roomId: String, userId: String) {
+    func startListening(roomId: String, userId: String = "") {
         listenerRegistration?.remove()
         currentRoomId = roomId
         currentUserId = userId
@@ -39,7 +39,7 @@ class ChatViewModel: ObservableObject {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let fetchedMessages):
-                    self.messages = fetchedMessages
+                    self.messages = fetchedMessages.sorted { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }
                     self.errorMessage = nil
                     Task {
                         await self.markCurrentRoomRead()
@@ -68,6 +68,7 @@ class ChatViewModel: ObservableObject {
         }
 
         let newMessage = ChatMessage(
+            id: UUID().uuidString,
             roomId: roomId,
             senderId: senderId,
             senderName: senderName,
@@ -78,10 +79,16 @@ class ChatViewModel: ObservableObject {
         defer { isSending = false }
 
         do {
+            if currentRoomId == roomId {
+                messages.append(newMessage)
+                messages.sort { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }
+            }
+
             try await service.sendMessage(newMessage)
             errorMessage = nil
             return true
         } catch {
+            messages.removeAll { $0.id == newMessage.id }
             errorMessage = "Gagal mengirim pesan: \(error.localizedDescription)"
             return false
         }
