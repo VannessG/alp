@@ -8,6 +8,7 @@
 import Foundation
 import FirebaseAuth
 import FirebaseFirestore
+import LocalAuthentication
 
 protocol EventServiceProtocol {
     func observeUserEvents(userId: String, completion: @escaping (Result<[Event], Error>) -> Void) -> () -> Void
@@ -17,6 +18,7 @@ protocol EventServiceProtocol {
     func updateAnnouncement(eventId: String, text: String) async throws
     func endEvent(eventId: String) async throws
     func deleteEvent(eventId: String) async throws
+    func authenticateBiometrics(reason: String) async throws -> Bool
 }
 
 class EventService: EventServiceProtocol {
@@ -95,5 +97,16 @@ class EventService: EventServiceProtocol {
     
     func deleteEvent(eventId: String) async throws {
         try await db.collection("events").document(eventId).delete()
+    }
+    
+    func authenticateBiometrics(reason: String) async throws -> Bool {
+        let context = LAContext()
+        var error: NSError?
+        
+        if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
+            return try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)
+        } else {
+            return true
+        }
     }
 }

@@ -14,6 +14,7 @@ class EventViewModel: ObservableObject {
     @Published var userEvents: [Event] = []
     @Published var userEventsCount: Int = 0
     @Published var errorMessage = ""
+    @Published var showBiometricError = false
     
     private let eventService: EventServiceProtocol
     private var cancelEventsListener: (() -> Void)?
@@ -90,14 +91,22 @@ class EventViewModel: ObservableObject {
         }
     }
     
-    func deleteEvent(completion: @escaping () -> Void) {
-        guard let id = activeEvent?.id else { return }
+    func deleteEventWithAuth() {
         Task {
             do {
-                try await self.eventService.deleteEvent(eventId: id)
-                self.activeEvent = nil
-                completion()
+                let reason = "Verifikasi identitas Anda untuk menghapus event ini."
+                let isAuthorized = try await eventService.authenticateBiometrics(reason: reason)
+                
+                if isAuthorized {
+                    if let id = activeEvent?.id {
+                        try await self.eventService.deleteEvent(eventId: id)
+                        self.activeEvent = nil
+                    }
+                } else {
+                    self.showBiometricError = true
+                }
             } catch {
+                self.showBiometricError = true
                 self.errorMessage = error.localizedDescription
             }
         }

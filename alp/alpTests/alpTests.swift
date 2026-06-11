@@ -43,6 +43,7 @@ class MockAuthService: AuthServiceProtocol {
 
 class MockEventService: EventServiceProtocol {
     var shouldThrowError = false
+    var mockBiometricSuccess = true
     var mockEvent = Event(id: "event_abc", name: "MAD Hackathon", joinCode: "ABCDEF", announcement: "Welcome", ownerId: "user_123", status: "active", members: ["user_123"])
     
     func observeUserEvents(userId: String, completion: @escaping (Result<[Event], Error>) -> Void) -> () -> Void {
@@ -78,6 +79,11 @@ class MockEventService: EventServiceProtocol {
     
     func deleteEvent(eventId: String) async throws {
         if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+    }
+    
+    func authenticateBiometrics(reason: String) async throws -> Bool {
+        if shouldThrowError { throw NSError(domain: "Test", code: 400) }
+        return mockBiometricSuccess
     }
 }
 
@@ -232,7 +238,7 @@ final class AuthViewModelTests: XCTestCase {
     }
     
     func test_login_Success_UpdatesState() async throws {
-        vm.login(email: "budi@test.com", pass: "123456")
+        vm.login(email: "buditest.com", pass: "123456")
         try await Task.sleep(nanoseconds: 50_000_000)
         
         XCTAssertTrue(vm.isAuthenticated, "User should be authenticated after login")
@@ -319,16 +325,15 @@ final class EventViewModelTests: XCTestCase {
         XCTAssertEqual(vm.activeEvent?.status, "ended")
     }
     
-    func test_deleteEvent_Success() {
+    func test_deleteEventWithAuth_Success() async throws {
         vm.activeEvent = mockEventService.mockEvent
-        let expectation = XCTestExpectation(description: "Delete event callback triggered")
+        mockEventService.mockBiometricSuccess = true
         
-        vm.deleteEvent {
-            XCTAssertNil(self.vm.activeEvent)
-            expectation.fulfill()
-        }
+        vm.deleteEventWithAuth()
+        try await Task.sleep(nanoseconds: 50_000_000)
         
-        wait(for: [expectation], timeout: 2.0)
+        XCTAssertNil(vm.activeEvent, "Active event harusnya menjadi nil setelah dihapus")
+        XCTAssertFalse(vm.showBiometricError, "Error biometrik tidak boleh muncul")
     }
 }
 

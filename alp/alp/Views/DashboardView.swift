@@ -18,9 +18,10 @@ struct DashboardView: View {
 
     @State private var showAnnouncementInput = false
     @State private var announcementText = ""
+    @State private var showEndEventAlert = false
+    @State private var showDeleteEventAlert = false
 
     private var nearestSchedule: Schedule? {
-
         let startOfToday = Calendar.current.startOfDay(for: Date())
 
         return scheduleVM.schedules
@@ -145,7 +146,7 @@ struct DashboardView: View {
                 }
             }
             .preferredColorScheme(.light)
-         .task {
+            .task {
                 if let eventId = eventVM.activeEvent?.id {
                     await scheduleVM.loadSchedules(for: eventId)
                 }
@@ -252,7 +253,6 @@ struct DashboardView: View {
 
     private var upcomingScheduleSection: some View {
         VStack(spacing: 12) {
-
               HStack(spacing: 6) {
                   RoundedRectangle(cornerRadius: 2)
                       .fill(Color.blue)
@@ -271,15 +271,12 @@ struct DashboardView: View {
               .frame(maxWidth: .infinity, alignment: .leading)
 
               HStack(spacing: 12) {
-
                   Image(systemName: "calendar.badge.clock")
                       .font(.system(size: 24))
                       .foregroundColor(.blue)
 
                   VStack(alignment: .leading, spacing: 4) {
-
                       if let schedule = nearestSchedule {
-
                           Text(schedule.title)
                               .font(.system(size: 14, weight: .semibold))
                               .foregroundColor(.primary)
@@ -298,7 +295,6 @@ struct DashboardView: View {
                               .foregroundColor(.secondary)
 
                       } else {
-
                           Text("Tidak ada jadwal terdekat")
                               .font(.system(size: 14, weight: .semibold))
 
@@ -349,7 +345,9 @@ struct DashboardView: View {
             .padding(.bottom, 8)
 
             if !isReadOnly {
-                Button(action: { eventVM.endEvent() }) {
+                Button(action: {
+                    showEndEventAlert = true
+                }) {
                     HStack(spacing: 14) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.orange.opacity(0.15)).frame(width: 40, height: 40)
@@ -367,7 +365,16 @@ struct DashboardView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.gray.opacity(0.15), lineWidth: 1))
                     .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
-                }.buttonStyle(PlainButtonStyle())
+                }
+                .buttonStyle(PlainButtonStyle())
+                .alert("End Event", isPresented: $showEndEventAlert) {
+                    Button("Batal", role: .cancel) { }
+                    Button("Akhiri Event", role: .destructive) {
+                        eventVM.endEvent()
+                    }
+                } message: {
+                    Text("Apakah Anda yakin ingin mengakhiri event ini? Status event akan diubah menjadi Read-Only dan tidak dapat diubah kembali.")
+                }
             } else {
                 Text("EVENT TELAH BERAKHIR (Read Only)")
                     .font(.system(size: 12, weight: .bold))
@@ -376,9 +383,7 @@ struct DashboardView: View {
             }
 
             Button(action: {
-                eventVM.deleteEvent {
-                    eventVM.activeEvent = nil
-                }
+                showDeleteEventAlert = true
             }) {
                 HStack(spacing: 14) {
                     ZStack {
@@ -397,7 +402,16 @@ struct DashboardView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.gray.opacity(0.15), lineWidth: 1))
                 .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
-            }.buttonStyle(PlainButtonStyle())
+            }
+            .buttonStyle(PlainButtonStyle())
+            .alert("Delete Event", isPresented: $showDeleteEventAlert) {
+                Button("Batal", role: .cancel) { }
+                Button("Hapus", role: .destructive) {
+                    eventVM.deleteEventWithAuth()
+                }
+            } message: {
+                Text("Apakah Anda yakin ingin menghapus event ini? Semua data terkait akan terhapus secara permanen dan tidak dapat dikembalikan.")
+            }
         }
     }
 
@@ -418,27 +432,4 @@ struct DashboardView: View {
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.gray.opacity(0.15), lineWidth: 1))
         .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
-}
-
-#Preview {
-    let mockAuth = AuthViewModel()
-    mockAuth.currentUser = User(id: "123", name: "Vanness", email: "test@test.com")
-
-    let mockEvent = EventViewModel()
-    mockEvent.activeEvent = Event(
-        id: "event_1",
-        name: "Kepanitiaan SIFT",
-        joinCode: "SIFT26",
-        announcement: "Rapat perdana besok jam 10 pagi di lab mac.",
-        ownerId: "123",
-        status: "active",
-        members: ["123"]
-    )
-
-    return DashboardView()
-        .environmentObject(mockAuth)
-        .environmentObject(mockEvent)
-        .environmentObject(EventMemberViewModel())
-        .environmentObject(DivisionViewModel())
-        .environmentObject(AttendanceViewModel())
 }
