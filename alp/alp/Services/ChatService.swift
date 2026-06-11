@@ -48,8 +48,6 @@ class FirestoreChatService: ChatServiceProtocol {
     
     func observeMessages(roomId: String, completion: @escaping (Result<[ChatMessage], Error>) -> Void) -> ListenerRegistration? {
         let query = collectionRef.whereField("roomId", isEqualTo: roomId)
-            .order(by: "timestamp", descending: false)
-            .limit(toLast: 100)
         
         return query.addSnapshotListener(includeMetadataChanges: true) { snapshot, error in
             if let error = error {
@@ -73,8 +71,10 @@ class FirestoreChatService: ChatServiceProtocol {
                     timestamp: (data["timestamp"] as? Timestamp)?.dateValue()
                 )
             }
+            .sorted { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }
+            .suffix(100)
 
-            completion(.success(messages))
+            completion(.success(Array(messages)))
         }
     }
 }

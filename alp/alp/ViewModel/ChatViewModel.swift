@@ -39,7 +39,9 @@ class ChatViewModel: ObservableObject {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let fetchedMessages):
-                    self.messages = fetchedMessages.sorted { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }
+                    self.messages = fetchedMessages
+                        .filter { $0.roomId == roomId }
+                        .sorted { ($0.timestamp ?? .distantPast) < ($1.timestamp ?? .distantPast) }
                     self.errorMessage = nil
                     Task {
                         await self.markCurrentRoomRead()

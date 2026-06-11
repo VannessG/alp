@@ -153,31 +153,6 @@ final class ScheduleViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
     }
 
-    func testSelectedDivisionMemberIdsFiltersSchedulesByAssignedMembers() async {
-        service.schedules = [
-            makeSchedule(id: "schedule-design", eventId: "event-a", title: "Desain Banner", assignedTo: ["member-design", "member-copy"]),
-            makeSchedule(id: "schedule-tech", eventId: "event-a", title: "Setup Jaringan", assignedTo: ["member-tech"])
-        ]
-        await viewModel.loadSchedules(for: "event-a")
-
-        viewModel.selectedDivisionMemberIds = ["member-design"]
-
-        XCTAssertEqual(viewModel.filteredSchedules.map(\.title), ["Desain Banner"])
-    }
-
-    func testClearingSelectedDivisionShowsAllSchedulesAgain() async {
-        service.schedules = [
-            makeSchedule(id: "schedule-design", eventId: "event-a", assignedTo: ["member-design"]),
-            makeSchedule(id: "schedule-tech", eventId: "event-a", assignedTo: ["member-tech"])
-        ]
-        await viewModel.loadSchedules(for: "event-a")
-        viewModel.selectedDivisionMemberIds = ["member-tech"]
-
-        viewModel.selectedDivisionMemberIds = nil
-
-        XCTAssertEqual(viewModel.filteredSchedules.compactMap(\.id), ["schedule-design", "schedule-tech"])
-    }
-
     private func makeSchedule(
         id: String? = "schedule-1",
         eventId: String = "event-a",

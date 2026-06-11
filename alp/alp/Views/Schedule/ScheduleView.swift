@@ -9,12 +9,10 @@ import SwiftUI
 struct ScheduleView: View {
     @EnvironmentObject var authVM: AuthViewModel
     @EnvironmentObject var eventVM: EventViewModel
-    @EnvironmentObject var divisionVM: DivisionViewModel
     @StateObject var scheduleVM = ScheduleViewModel()
     
     @State private var isShowingForm = false
     @State private var selectedSchedule: Schedule? = nil
-    @State private var selectedDivisionId: String = "All"
     
     var body: some View {
         NavigationStack {
@@ -22,8 +20,6 @@ struct ScheduleView: View {
                 Color(uiColor: .systemGroupedBackground).ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    filterPicker
-                    
                     if scheduleVM.isLoading && scheduleVM.schedules.isEmpty {
                         ProgressView("Memuat Jadwal...")
                             .frame(maxHeight: .infinity)
@@ -84,7 +80,6 @@ struct ScheduleView: View {
                 if let eventId = eventVM.activeEvent?.id {
                     Task {
                         await scheduleVM.loadSchedules(for: eventId)
-                        divisionVM.fetchDivisions(for: eventId)
                     }
                 }
             }
@@ -94,30 +89,6 @@ struct ScheduleView: View {
                 Text(scheduleVM.errorMessage ?? "")
             }
         }
-    }
-    
-    private var filterPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                FilterButton(title: "Semua", isSelected: selectedDivisionId == "All") {
-                    selectedDivisionId = "All"
-                    scheduleVM.selectedDivisionMemberIds = nil
-                }
-                
-                ForEach(divisionVM.divisions) { div in
-                    FilterButton(title: div.name, isSelected: selectedDivisionId == div.id) {
-                        selectedDivisionId = div.id ?? ""
-                        let memberIds = divisionVM.members
-                            .filter { $0.division == div.name }
-                            .map { $0.userId }
-                            
-                        scheduleVM.selectedDivisionMemberIds = memberIds
-                    }
-                }
-            }
-            .padding()
-        }
-        .background(Color(uiColor: .secondarySystemGroupedBackground))
     }
     
     private var emptyState: some View {
@@ -265,24 +236,6 @@ struct ScheduleRow: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
         return "\(formatter.string(from: start)) - \(formatter.string(from: end))"
-    }
-}
-
-struct FilterButton: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(isSelected ? Color.blue : Color.gray.opacity(0.1))
-                .foregroundColor(isSelected ? .white : .primary)
-                .cornerRadius(20)
-        }
     }
 }
 
